@@ -1,23 +1,17 @@
 macro_rules! hex_char_to_integer {
-    ( $bit:expr ) => {
-        u8::from_str_radix(&$bit.to_string()[..], 16).unwrap()
+    ( $char1:expr ) => {
+        u8::from_str_radix(&$char1.to_string(), 16).unwrap()
     };
-    ( $first_bit:expr, $second_bit:expr ) => {{
-        let mut temp_string = String::new();
-        temp_string.push($first_bit);
-        temp_string.push($second_bit);
-        u8::from_str_radix(&temp_string[..], 16).unwrap()
+    ( $char1:expr, $char2:expr ) => {{
+        let string = format!("{}{}", $char1, $char2);
+        u8::from_str_radix(&string, 16).unwrap()
     }};
-    ( $first_bit:expr, $second_bit:expr, $third_bit:expr, $fourth_bit:expr ) => {{
-        let mut temp_string = String::new();
-        temp_string.push($first_bit);
-        temp_string.push($second_bit);
-        temp_string.push($third_bit);
-        temp_string.push($fourth_bit);
-        u16::from_str_radix(&temp_string[..], 16).unwrap()
+    ( $char1:expr, $char2:expr, $char3:expr, $char4:expr ) => {{
+        let string = format!("{}{}{}{}", $char1, $char2, $char3, $char4);
+        u16::from_str_radix(&string, 16).unwrap()
     }};
-    ( $first_bit:expr, $second_bit:expr, $third_bit:expr ) => {{
-        hex_char_to_integer!('0', $first_bit, $second_bit, $third_bit)
+    ( $char1:expr, $char2:expr, $char3:expr ) => {{
+        hex_char_to_integer!('0', $char1, $char2, $char3)
     }};
 }
 
