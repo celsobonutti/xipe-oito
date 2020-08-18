@@ -50,7 +50,7 @@ pub enum Instruction {
     ShiftLeft(u8),
     SkipIfRegisterDifferent(TargetSourcePair),
     SetIAs(u16),
-    JumpToNPlusV0(u16),
+    GoToNPlusV0(u16),
     Random(RegisterValuePair),
     Draw { x: u8, y: u8, height: u8 },
     SkipIfKeyPressed(u8),
@@ -89,6 +89,7 @@ pub fn decode(op_code: u16) -> Instruction {
     match bits_array {
         ['0', '0', 'E', '0'] => Instruction::ClearDisplay,
         ['0', '0', 'E', 'E'] => Instruction::Return,
+        ['0', c1, c2, c3] => Instruction::CallMachineCode(hex_char_to_integer!(c1, c2, c3)),
         ['1', c1, c2, c3] => Instruction::GoTo(hex_char_to_integer!(c1, c2, c3)),
         ['2', c1, c2, c3] => Instruction::Call(hex_char_to_integer!(c1, c2, c3)),
         ['3', register, c1, c2] => Instruction::SkipIfEqual(as_rv_pair(register, c1, c2)),
@@ -107,7 +108,7 @@ pub fn decode(op_code: u16) -> Instruction {
         ['8', x, _, 'E'] => Instruction::ShiftLeft(hex_char_to_integer!(x)),
         ['9', x, y, '0'] => Instruction::SkipIfRegisterDifferent(as_ts_pair(x, y)),
         ['A', c1, c2, c3] => Instruction::SetIAs(hex_char_to_integer!(c1, c2, c3)),
-        ['B', c1, c2, c3] => Instruction::JumpToNPlusV0(hex_char_to_integer!(c1, c2, c3)),
+        ['B', c1, c2, c3] => Instruction::GoToNPlusV0(hex_char_to_integer!(c1, c2, c3)),
         ['C', register, c1, c2] => Instruction::Random(as_rv_pair(register, c1, c2)),
         ['D', x, y, height] => Instruction::Draw {
             x: hex_char_to_integer!(x),
@@ -132,6 +133,11 @@ pub fn decode(op_code: u16) -> Instruction {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn call_machine_code() {
+        assert_eq!(Instruction::CallMachineCode(0xABC), decode(0x0ABC))
+    }
 
     #[test]
     fn clear_display() {
@@ -183,17 +189,6 @@ mod tests {
                 source: 0x2
             }),
             decode(0x5120)
-        )
-    }
-
-    #[test]
-    fn skip_if_register_different() {
-        assert_eq!(
-            Instruction::SkipIfRegisterDifferent(TargetSourcePair {
-                target: 0x4,
-                source: 0x3
-            }),
-            decode(0x9430)
         )
     }
 
@@ -275,7 +270,7 @@ mod tests {
     }
 
     #[test]
-    fn subtract_vy_to_vx() {
+    fn subtract_vy_from_vx() {
         assert_eq!(
             Instruction::SubYFromX(TargetSourcePair {
                 target: 0xE,
@@ -287,10 +282,7 @@ mod tests {
 
     #[test]
     fn shift_right() {
-        assert_eq!(
-            Instruction::ShiftRight(0x2),
-            decode(0x82A6)
-        )
+        assert_eq!(Instruction::ShiftRight(0x2), decode(0x82A6))
     }
 
     #[test]
@@ -306,9 +298,110 @@ mod tests {
 
     #[test]
     fn shift_left() {
+        assert_eq!(Instruction::ShiftLeft(0xE), decode(0x8EAE))
+    }
+
+    #[test]
+    fn skip_if_register_different() {
         assert_eq!(
-            Instruction::ShiftLeft(0xE),
-            decode(0x8EAE)
+            Instruction::SkipIfRegisterDifferent(TargetSourcePair {
+                target: 0x4,
+                source: 0x3
+            }),
+            decode(0x9430)
         )
+    }
+
+    #[test]
+    fn set_i_as_n() {
+        assert_eq!(Instruction::SetIAs(0x0EEE), decode(0xAEEE))
+    }
+
+    #[test]
+    fn go_to_n_plus_v0() {
+        assert_eq!(Instruction::GoToNPlusV0(0xABF), decode(0xBABF))
+    }
+
+    #[test]
+    fn random() {
+        assert_eq!(
+            Instruction::Random(RegisterValuePair {
+                register: 0xA,
+                value: 0xBF
+            }),
+            decode(0xCABF)
+        )
+    }
+
+    #[test]
+    fn draw() {
+        assert_eq!(
+            Instruction::Draw {
+                x: 0xA,
+                y: 0xB,
+                height: 0x4
+            },
+            decode(0xDAB4)
+        )
+    }
+
+    #[test]
+    fn skip_if_key_pressed() {
+        assert_eq!(Instruction::SkipIfKeyPressed(0xA), decode(0xEA9E))
+    }
+
+    #[test]
+    fn skip_if_key_not_pressed() {
+        assert_eq!(Instruction::SkipIfKeyNotPressed(0xD), decode(0xEDA1))
+    }
+
+    #[test]
+    fn get_delay() {
+        assert_eq!(Instruction::SetXAsDelay(0x7), decode(0xF707))
+    }
+
+    #[test]
+    fn get_key() {
+        assert_eq!(Instruction::SetXAsKey(0x6), decode(0xF60A))
+    }
+
+    #[test]
+    fn set_delay() {
+        assert_eq!(Instruction::SetDelayAsX(0x2), decode(0xF215))
+    }
+
+    #[test]
+    fn set_sound() {
+        assert_eq!(Instruction::SetSoundAsX(0xD), decode(0xFD18))
+    }
+
+    #[test]
+    fn add_vx_to_i() {
+        assert_eq!(Instruction::AddXToI(0xA), decode(0xFA1E))
+    }
+
+    #[test]
+    fn set_sprite_to_i() {
+        assert_eq!(Instruction::SetIAsSprite(0x3), decode(0xF329))
+    }
+
+    #[test]
+    fn set_bcd() {
+        assert_eq!(Instruction::StoreBCD(0xA), decode(0xFA33))
+    }
+
+    #[test]
+    fn reg_dump() {
+        assert_eq!(Instruction::DumpRegisters(0xE), decode(0xFE55))
+    }
+
+    #[test]
+    fn reg_load() {
+        assert_eq!(Instruction::LoadRegisters(0xB), decode(0xFB65))
+    }
+
+    #[test]
+    fn invalid_instruction() {
+        assert_eq!(Instruction::InvalidInstruction, decode(0x5AB4))
     }
 }
