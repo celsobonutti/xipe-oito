@@ -15,16 +15,19 @@ macro_rules! hex_char_to_integer {
     }};
 }
 
+#[derive(Debug, PartialEq)]
 pub struct TargetSourcePair {
     target: u8,
     source: u8,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct RegisterValuePair {
     register: u8,
     value: u8,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Instruction {
     CallMachineCode(u16),
     ClearDisplay,
@@ -34,12 +37,12 @@ pub enum Instruction {
     SkipIfEqual(RegisterValuePair),
     SkipIfDifferent(RegisterValuePair),
     SkipIfRegisterEqual(TargetSourcePair),
-    SetRegisterValue(RegisterValuePair),
-    AddToRegisterValue(RegisterValuePair),
+    SetValueToRegister(RegisterValuePair),
+    AddValueToRegister(RegisterValuePair),
     AssignVYToVX(TargetSourcePair),
     SetXOrY(TargetSourcePair),
     SetXAndY(TargetSourcePair),
-    SetXXORY(TargetSourcePair),
+    SetXXorY(TargetSourcePair),
     AddYToX(TargetSourcePair),
     SubYFromX(TargetSourcePair),
     ShiftRight(u8),
@@ -80,7 +83,7 @@ fn as_rv_pair(register: char, c1: char, c2: char) -> RegisterValuePair {
 
 pub fn decode(op_code: u16) -> Instruction {
     let mut bits_array = [' '; 4];
-    let bits: Vec<char> = (format!("{:X}", op_code)).chars().collect();
+    let bits: Vec<char> = (format!("{:04X}", op_code)).chars().collect();
     bits_array.copy_from_slice(&bits[..]);
 
     match bits_array {
@@ -91,12 +94,12 @@ pub fn decode(op_code: u16) -> Instruction {
         ['3', register, c1, c2] => Instruction::SkipIfEqual(as_rv_pair(register, c1, c2)),
         ['4', register, c1, c2] => Instruction::SkipIfDifferent(as_rv_pair(register, c1, c2)),
         ['5', x, y, '0'] => Instruction::SkipIfRegisterEqual(as_ts_pair(x, y)),
-        ['6', register, c1, c2] => Instruction::SetRegisterValue(as_rv_pair(register, c1, c2)),
-        ['7', register, c1, c2] => Instruction::AddToRegisterValue(as_rv_pair(register, c1, c2)),
+        ['6', register, c1, c2] => Instruction::SetValueToRegister(as_rv_pair(register, c1, c2)),
+        ['7', register, c1, c2] => Instruction::AddValueToRegister(as_rv_pair(register, c1, c2)),
         ['8', x, y, '0'] => Instruction::AssignVYToVX(as_ts_pair(x, y)),
         ['8', x, y, '1'] => Instruction::SetXOrY(as_ts_pair(x, y)),
         ['8', x, y, '2'] => Instruction::SetXAndY(as_ts_pair(x, y)),
-        ['8', x, y, '3'] => Instruction::SetXXORY(as_ts_pair(x, y)),
+        ['8', x, y, '3'] => Instruction::SetXXorY(as_ts_pair(x, y)),
         ['8', x, y, '4'] => Instruction::AddYToX(as_ts_pair(x, y)),
         ['8', x, y, '5'] => Instruction::SubYFromX(as_ts_pair(x, y)),
         ['8', x, _, '6'] => Instruction::ShiftRight(hex_char_to_integer!(x)),
@@ -123,5 +126,189 @@ pub fn decode(op_code: u16) -> Instruction {
         ['F', x, '5', '5'] => Instruction::DumpRegisters(hex_char_to_integer!(x)),
         ['F', x, '6', '5'] => Instruction::LoadRegisters(hex_char_to_integer!(x)),
         _ => Instruction::InvalidInstruction,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clear_display() {
+        assert_eq!(Instruction::ClearDisplay, decode(0x00E0))
+    }
+
+    #[test]
+    fn return_from() {
+        assert_eq!(Instruction::Return, decode(0x00EE))
+    }
+
+    #[test]
+    fn go_to() {
+        assert_eq!(Instruction::GoTo(0x0ABA), decode(0x1ABA))
+    }
+
+    #[test]
+    fn call_at() {
+        assert_eq!(Instruction::Call(0x0FBF), decode(0x2FBF))
+    }
+
+    #[test]
+    fn skip_if_equal() {
+        assert_eq!(
+            Instruction::SkipIfEqual(RegisterValuePair {
+                register: 0xA,
+                value: 0xBB
+            }),
+            decode(0x3ABB)
+        )
+    }
+
+    #[test]
+    fn skip_if_different() {
+        assert_eq!(
+            Instruction::SkipIfDifferent(RegisterValuePair {
+                register: 0xA,
+                value: 0xBB
+            }),
+            decode(0x4ABB)
+        )
+    }
+
+    #[test]
+    fn skip_if_register_equal() {
+        assert_eq!(
+            Instruction::SkipIfRegisterEqual(TargetSourcePair {
+                target: 0x1,
+                source: 0x2
+            }),
+            decode(0x5120)
+        )
+    }
+
+    #[test]
+    fn skip_if_register_different() {
+        assert_eq!(
+            Instruction::SkipIfRegisterDifferent(TargetSourcePair {
+                target: 0x4,
+                source: 0x3
+            }),
+            decode(0x9430)
+        )
+    }
+
+    #[test]
+    fn set_register_as_value() {
+        assert_eq!(
+            Instruction::SetValueToRegister(RegisterValuePair {
+                register: 0x2,
+                value: 0x44
+            }),
+            decode(0x6244)
+        )
+    }
+
+    #[test]
+    fn add_value_to_register() {
+        assert_eq!(
+            Instruction::AddValueToRegister(RegisterValuePair {
+                register: 0x3,
+                value: 0x1A
+            }),
+            decode(0x731A)
+        )
+    }
+
+    #[test]
+    fn set_vx_as_vy() {
+        assert_eq!(
+            Instruction::AssignVYToVX(TargetSourcePair {
+                target: 0x1,
+                source: 0x6
+            }),
+            decode(0x8160)
+        )
+    }
+
+    #[test]
+    fn set_x_as_x_or_y() {
+        assert_eq!(
+            Instruction::SetXOrY(TargetSourcePair {
+                target: 0x3,
+                source: 0x1
+            }),
+            decode(0x8311)
+        )
+    }
+
+    #[test]
+    fn set_x_as_x_and_y() {
+        assert_eq!(
+            Instruction::SetXAndY(TargetSourcePair {
+                target: 0x1,
+                source: 0xE
+            }),
+            decode(0x81E2)
+        )
+    }
+
+    #[test]
+    fn set_x_as_x_xor_y() {
+        assert_eq!(
+            Instruction::SetXXorY(TargetSourcePair {
+                target: 0xC,
+                source: 0xA
+            }),
+            decode(0x8CA3)
+        )
+    }
+
+    #[test]
+    fn add_vy_to_vx() {
+        assert_eq!(
+            Instruction::AddYToX(TargetSourcePair {
+                target: 0xE,
+                source: 0xD
+            }),
+            decode(0x8ED4)
+        )
+    }
+
+    #[test]
+    fn subtract_vy_to_vx() {
+        assert_eq!(
+            Instruction::SubYFromX(TargetSourcePair {
+                target: 0xE,
+                source: 0xD
+            }),
+            decode(0x8ED5)
+        )
+    }
+
+    #[test]
+    fn shift_right() {
+        assert_eq!(
+            Instruction::ShiftRight(0x2),
+            decode(0x82A6)
+        )
+    }
+
+    #[test]
+    fn set_vx_as_vy_minus_vx() {
+        assert_eq!(
+            Instruction::SetXAsYMinusX(TargetSourcePair {
+                target: 0x3,
+                source: 0x2
+            }),
+            decode(0x8327)
+        )
+    }
+
+    #[test]
+    fn shift_left() {
+        assert_eq!(
+            Instruction::ShiftLeft(0xE),
+            decode(0x8EAE)
+        )
     }
 }

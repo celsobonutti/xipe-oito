@@ -69,9 +69,16 @@ impl Chip8 {
     let op_code = opcode.read_u16::<BigEndian>().unwrap();
     match instructions::decode(op_code) {
       Instruction::ClearDisplay => {
-        self.gfx = [false; 64 * 32]
+        self.gfx = [false; 64 * 32];
       }
-      
+      Instruction::Call(addr) => {
+        self.stack[self.stack_pointer as usize] = self.program_counter;
+        self.stack_pointer += 1;
+        self.program_counter = addr;
+      }
+      _ => {
+        ()
+      }
     }
   }
 }
