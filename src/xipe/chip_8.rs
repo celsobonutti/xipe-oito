@@ -1,4 +1,5 @@
 use byteorder::{BigEndian, ReadBytesExt};
+use super::instructions::{self, Instruction};
 
 pub const FONTSET: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0,
@@ -65,6 +66,12 @@ impl Chip8 {
   fn emulate_cycle(&mut self) {
     let position = self.program_counter as usize;
     let mut opcode = &self.memory[position..position+2];
-    let opcode = opcode.read_u16::<BigEndian>().unwrap();
+    let op_code = opcode.read_u16::<BigEndian>().unwrap();
+    match instructions::decode(op_code) {
+      Instruction::ClearDisplay => {
+        self.gfx = [false; 64 * 32]
+      }
+      
+    }
   }
 }

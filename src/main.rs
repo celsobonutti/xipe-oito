@@ -1,3 +1,7 @@
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
-fn main() {}
+fn main() {
+  let a = 'a';
+  let b = &a.to_string()[..];
+  println!("{}", a);
+}
