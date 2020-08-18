@@ -17,14 +17,14 @@ macro_rules! hex_char_to_integer {
 
 #[derive(Debug, PartialEq)]
 pub struct TargetSourcePair {
-    target: u8,
-    source: u8,
+    pub target: u8,
+    pub source: u8,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct RegisterValuePair {
-    register: u8,
-    value: u8,
+    pub register: u8,
+    pub value: u8,
 }
 
 #[derive(Debug, PartialEq)]
