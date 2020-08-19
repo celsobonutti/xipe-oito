@@ -37,7 +37,7 @@ pub enum Instruction {
     SkipIfEqual(RegisterValuePair),
     SkipIfDifferent(RegisterValuePair),
     SkipIfRegisterEqual(TargetSourcePair),
-    SetValueToRegister(RegisterValuePair),
+    AssignValueToRegister(RegisterValuePair),
     AddValueToRegister(RegisterValuePair),
     AssignVYToVX(TargetSourcePair),
     SetXOrY(TargetSourcePair),
@@ -95,7 +95,7 @@ pub fn decode(op_code: u16) -> Instruction {
         ['3', register, c1, c2] => Instruction::SkipIfEqual(as_rv_pair(register, c1, c2)),
         ['4', register, c1, c2] => Instruction::SkipIfDifferent(as_rv_pair(register, c1, c2)),
         ['5', x, y, '0'] => Instruction::SkipIfRegisterEqual(as_ts_pair(x, y)),
-        ['6', register, c1, c2] => Instruction::SetValueToRegister(as_rv_pair(register, c1, c2)),
+        ['6', register, c1, c2] => Instruction::AssignValueToRegister(as_rv_pair(register, c1, c2)),
         ['7', register, c1, c2] => Instruction::AddValueToRegister(as_rv_pair(register, c1, c2)),
         ['8', x, y, '0'] => Instruction::AssignVYToVX(as_ts_pair(x, y)),
         ['8', x, y, '1'] => Instruction::SetXOrY(as_ts_pair(x, y)),
@@ -193,9 +193,9 @@ mod tests {
     }
 
     #[test]
-    fn set_register_as_value() {
+    fn assign_value_to_register() {
         assert_eq!(
-            Instruction::SetValueToRegister(RegisterValuePair {
+            Instruction::AssignValueToRegister(RegisterValuePair {
                 register: 0x2,
                 value: 0x44
             }),
