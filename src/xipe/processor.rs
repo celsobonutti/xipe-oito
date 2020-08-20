@@ -2,6 +2,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use rand::Rng;
 
 use super::fontset::FONTSET;
+use super::input::Input;
 use super::instructions::{self, Instruction, RegisterValuePair, TargetSourcePair};
 
 const MEMORY_SIZE: usize = 4096;
@@ -33,7 +34,7 @@ pub struct Chip8 {
     sound_timer: u8,
     stack: [u16; 16],
     stack_pointer: usize,
-    input: [bool; 16],
+    input: Input,
     waiting_for_key: Option<u8>,
 }
 
@@ -56,7 +57,7 @@ impl Chip8 {
             sound_timer: 0,
             stack: [0; 16],
             stack_pointer: 0,
-            input: [false; 16],
+            input: Input::new(),
             waiting_for_key: None,
         }
     }
@@ -216,15 +217,15 @@ impl Chip8 {
             }
             Instruction::Draw {x, y, height} => {
                 self.set_vf(0x0);
-                
+                ProgramCounter::Next
             }
             Instruction::SkipIfKeyPressed(register) => {
                 let reg_value = self.get_register(register);
-                skip_if(self.input[reg_value as usize])
+                skip_if(self.input.is_pressed(reg_value))
             }
             Instruction::SkipIfKeyNotPressed(register) => {
                 let reg_value = self.get_register(register);
-                skip_if(!self.input[reg_value as usize])
+                skip_if(!self.input.is_pressed(reg_value))
             }
             Instruction::SetXAsDelay(register) => {
                 self.set_register(register, self.delay_timer);
@@ -270,14 +271,14 @@ impl Chip8 {
                 }
                 ProgramCounter::Next
             }
+            _ => ProgramCounter::Next
         }
     }
 
-    fn emulate_cycle(&mut self, input: [bool; 16]) {
-        self.input = input;
+    fn emulate_cycle(&mut self) {
 
         if let Some(register) = self.waiting_for_key {
-            if let Some(index) = input.iter().position(|val| {*val}) {
+            if let Some(index) = self.input.keypad.iter().position(|val| {*val}) {
                 self.waiting_for_key = None;
                 self.set_register(register, index as u8);
             }

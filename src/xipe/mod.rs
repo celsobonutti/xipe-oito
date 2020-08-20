@@ -1,3 +1,4 @@
-pub mod chip_8;
+pub mod processor;
 mod instructions;
 mod fontset;
+mod input;

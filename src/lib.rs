@@ -1,7 +1,7 @@
 mod xipe;
 
-use crate::xipe::chip_8;
+use crate::xipe::processor;
 
-pub fn start() -> chip_8::Chip8 {
-  chip_8::Chip8::new()
+pub fn start() -> processor::Chip8 {
+  processor::Chip8::new()
 }
