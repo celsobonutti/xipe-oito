@@ -56,7 +56,7 @@ pub enum Instruction {
     SkipIfKeyPressed(u8),
     SkipIfKeyNotPressed(u8),
     SetXAsDelay(u8),
-    SetXAsKey(u8),
+    WaitForInputAndStoreIn(u8),
     SetDelayAsX(u8),
     SetSoundAsX(u8),
     AddXToI(u8),
@@ -118,7 +118,7 @@ pub fn decode(op_code: u16) -> Instruction {
         ['E', x, '9', 'E'] => Instruction::SkipIfKeyPressed(hex_char_to_integer!(x)),
         ['E', x, 'A', '1'] => Instruction::SkipIfKeyNotPressed(hex_char_to_integer!(x)),
         ['F', x, '0', '7'] => Instruction::SetXAsDelay(hex_char_to_integer!(x)),
-        ['F', x, '0', 'A'] => Instruction::SetXAsKey(hex_char_to_integer!(x)),
+        ['F', x, '0', 'A'] => Instruction::WaitForInputAndStoreIn(hex_char_to_integer!(x)),
         ['F', x, '1', '5'] => Instruction::SetDelayAsX(hex_char_to_integer!(x)),
         ['F', x, '1', '8'] => Instruction::SetSoundAsX(hex_char_to_integer!(x)),
         ['F', x, '1', 'E'] => Instruction::AddXToI(hex_char_to_integer!(x)),
@@ -361,8 +361,8 @@ mod tests {
     }
 
     #[test]
-    fn get_key() {
-        assert_eq!(Instruction::SetXAsKey(0x6), decode(0xF60A))
+    fn wait_for_input_and_store_in() {
+        assert_eq!(Instruction::WaitForInputAndStoreIn(0x6), decode(0xF60A))
     }
 
     #[test]

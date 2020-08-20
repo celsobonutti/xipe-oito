@@ -1,31 +1,45 @@
-use super::instructions::{self, Instruction, RegisterValuePair, TargetSourcePair};
 use byteorder::{BigEndian, ReadBytesExt};
+use rand::Rng;
 
-pub const FONTSET: [u8; 80] = [
-    0xF0, 0x90, 0x90, 0x90, 0xF0, 0x20, 0x60, 0x20, 0x20, 0x70, 0xF0, 0x10, 0xF0, 0x80, 0xF0, 0xF0,
-    0x10, 0xF0, 0x10, 0xF0, 0x90, 0x90, 0xF0, 0x10, 0x10, 0xF0, 0x80, 0xF0, 0x10, 0xF0, 0xF0, 0x80,
-    0xF0, 0x90, 0xF0, 0xF0, 0x10, 0x20, 0x40, 0x40, 0xF0, 0x90, 0xF0, 0x90, 0xF0, 0xF0, 0x90, 0xF0,
-    0x10, 0xF0, 0xF0, 0x90, 0xF0, 0x90, 0x90, 0xE0, 0x90, 0xE0, 0x90, 0xE0, 0xF0, 0x80, 0x80, 0x80,
-    0xF0, 0xE0, 0x90, 0x90, 0x90, 0xE0, 0xF0, 0x80, 0xF0, 0x80, 0xF0, 0xF0, 0x80, 0xF0, 0x80, 0x80,
-];
+use super::fontset::FONTSET;
+use super::instructions::{self, Instruction, RegisterValuePair, TargetSourcePair};
+
+const MEMORY_SIZE: usize = 4096;
+const SCREEN_SIZE: usize = 64 * 32;
+const OP_SIZE: u16 = 2;
+
+enum ProgramCounter {
+    Next,
+    Skip,
+    Jump(u16),
+}
+
+fn skip_if(condition: bool) -> ProgramCounter {
+    if condition {
+        ProgramCounter::Skip
+    } else {
+        ProgramCounter::Next
+    }
+}
 
 pub struct Chip8 {
     pub operation_code: u16,
-    pub memory: [u8; 4096],
+    pub memory: [u8; MEMORY_SIZE],
     pub registers: [u8; 16],
     pub index: u16,
     pub program_counter: u16,
-    pub gfx: [bool; 64 * 32],
+    pub gfx: [bool; SCREEN_SIZE],
     delay_timer: u8,
     sound_timer: u8,
     stack: [u16; 16],
     stack_pointer: usize,
-    key: [bool; 16],
+    input: [bool; 16],
+    waiting_for_key: Option<u8>,
 }
 
 impl Chip8 {
     pub fn new() -> Chip8 {
-        let mut memory = [0; 4096];
+        let mut memory = [0; MEMORY_SIZE];
 
         for (index, character) in FONTSET.iter().enumerate() {
             memory[index] = *character;
@@ -37,12 +51,13 @@ impl Chip8 {
             registers: [0; 16],
             index: 0,
             program_counter: 0x200,
-            gfx: [false; 64 * 32],
+            gfx: [false; SCREEN_SIZE],
             delay_timer: 0,
             sound_timer: 0,
             stack: [0; 16],
             stack_pointer: 0,
-            key: [false; 16],
+            input: [false; 16],
+            waiting_for_key: None,
         }
     }
 
@@ -50,10 +65,6 @@ impl Chip8 {
         for (index, value) in buffer.iter().enumerate() {
             self.memory[index + 512] = *value;
         }
-    }
-
-    fn increment_pc(&mut self) {
-        self.program_counter += 2;
     }
 
     fn set_register(&mut self, register: u8, value: u8) {
@@ -81,52 +92,63 @@ impl Chip8 {
         self.stack_pointer += 1;
     }
 
-    fn pop_stack(&mut self) {
+    fn pop_stack(&mut self) -> u16 {
         self.stack_pointer -= 1;
-        self.program_counter = self.stack[self.stack_pointer];
+        self.stack[self.stack_pointer]
     }
 
-    fn skip_if(&mut self, condition: bool) {
-        if condition {
-            self.increment_pc();
-        }
-        self.increment_pc();
-    }
-
-    fn execute_op(&mut self, op_code: u16) {
+    fn execute_op(&mut self, op_code: u16) -> ProgramCounter {
         match instructions::decode(op_code) {
             Instruction::CallMachineCode(_) => {
-                println!("Do you have me or something?");
+                println!("Do you hate me or something?");
+                ProgramCounter::Next
             }
             Instruction::ClearDisplay => {
                 self.gfx = [false; 64 * 32];
-                self.increment_pc();
+                ProgramCounter::Next
             }
-            Instruction::Return => {
-                self.pop_stack();
-            }
-            Instruction::GoTo(addr) => {
-                self.program_counter = addr;
-            }
-            Instruction::GoToNPlusV0(addr) => {
-                self.program_counter = addr + self.get_register(0x0) as u16;
-            }
+            Instruction::Return => ProgramCounter::Jump(self.pop_stack()),
+            Instruction::GoTo(addr) => ProgramCounter::Jump(addr),
             Instruction::Call(addr) => {
                 self.push_stack();
-                self.program_counter = addr;
+                ProgramCounter::Jump(addr)
+            }
+            Instruction::SkipIfEqual(RegisterValuePair { register, value }) => {
+                skip_if(self.get_register(register) == value)
+            }
+            Instruction::SkipIfDifferent(RegisterValuePair { register, value }) => {
+                skip_if(self.get_register(register) != value)
+            }
+            Instruction::SkipIfRegisterEqual(TargetSourcePair { target, source }) => {
+                skip_if(self.get_register(target) == self.get_register(source))
             }
             Instruction::AssignValueToRegister(RegisterValuePair { register, value }) => {
                 self.set_register(register, value);
-                self.increment_pc();
-            }
-            Instruction::AssignVYToVX(TargetSourcePair { target, source }) => {
-                self.set_register(target, self.get_register(source));
-                self.increment_pc();
+                ProgramCounter::Next
             }
             Instruction::AddValueToRegister(RegisterValuePair { register, value }) => {
                 let (sum, _) = self.get_register(register).overflowing_add(value);
                 self.set_register(register, sum);
-                self.increment_pc();
+                ProgramCounter::Next
+            }
+            Instruction::AssignVYToVX(TargetSourcePair { target, source }) => {
+                self.set_register(target, self.get_register(source));
+                ProgramCounter::Next
+            }
+            Instruction::SetXOrY(TargetSourcePair { target, source }) => {
+                let result = self.get_register(target) | self.get_register(source);
+                self.set_register(target, result);
+                ProgramCounter::Next
+            }
+            Instruction::SetXAndY(TargetSourcePair { target, source }) => {
+                let result = self.get_register(target) & self.get_register(source);
+                self.set_register(target, result);
+                ProgramCounter::Next
+            }
+            Instruction::SetXXorY(TargetSourcePair { target, source }) => {
+                let result = self.get_register(target) ^ self.get_register(source);
+                self.set_register(target, result);
+                ProgramCounter::Next
             }
             Instruction::AddYToX(TargetSourcePair { target, source }) => {
                 let (result, did_overflow) = self
@@ -138,7 +160,7 @@ impl Chip8 {
                     self.set_vf(0);
                 }
                 self.set_register(target, result);
-                self.increment_pc();
+                ProgramCounter::Next
             }
             Instruction::SubYFromX(TargetSourcePair { target, source }) => {
                 let (result, did_overflow) = self
@@ -150,7 +172,13 @@ impl Chip8 {
                     self.set_vf(1)
                 }
                 self.set_register(target, result);
-                self.increment_pc();
+                ProgramCounter::Next
+            }
+            Instruction::ShiftRight(register) => {
+                let reg_value = self.get_register(register);
+                self.set_vf(reg_value & 0b1);
+                self.set_register(register, reg_value >> 1);
+                ProgramCounter::Next
             }
             Instruction::SetXAsYMinusX(TargetSourcePair { target, source }) => {
                 let (result, did_overflow) = self
@@ -162,86 +190,119 @@ impl Chip8 {
                     self.set_vf(1)
                 }
                 self.set_register(target, result);
-                self.increment_pc();
+                ProgramCounter::Next
             }
-            Instruction::SetXOrY(TargetSourcePair { target, source }) => {
-                let result = self.get_register(target) | self.get_register(source);
-                self.set_register(target, result);
-                self.increment_pc();
+            Instruction::ShiftLeft(register) => {
+                let reg_value = self.get_register(register);
+                self.set_vf((reg_value & 0b10000000) / 128);
+                self.set_register(register, reg_value << 1);
+                ProgramCounter::Next
             }
-            Instruction::SetXAndY(TargetSourcePair { target, source }) => {
-                let result = self.get_register(target) & self.get_register(source);
-                self.set_register(target, result);
-                self.increment_pc();
-            }
-            Instruction::SetXXorY(TargetSourcePair { target, source }) => {
-                let result = self.get_register(target) ^ self.get_register(source);
-                self.set_register(target, result);
-                self.increment_pc();
-            }
-            Instruction::DumpRegisters(limit) => {
-                for i in 0..limit + 1 {
-                    self.set_memory(self.index, self.get_register(i));
-                    self.index += 1;
-                }
-                self.increment_pc();
-            }
-            Instruction::LoadRegisters(limit) => {
-                for i in 0..limit + 1 {
-                    self.set_register(i, self.get_memory(self.index));
-                    self.index += 1;
-                }
-                self.increment_pc();
-            }
-            Instruction::SetDelayAsX(register) => {
-                self.delay_timer = self.get_register(register);
-                self.increment_pc();
-            }
-            Instruction::SetSoundAsX(register) => {
-                self.sound_timer = self.get_register(register);
-                self.increment_pc();
+            Instruction::SkipIfRegisterDifferent(TargetSourcePair { target, source }) => {
+                skip_if(self.get_register(target) != self.get_register(source))
             }
             Instruction::SetIAs(value) => {
                 self.index = value;
-                self.increment_pc();
+                ProgramCounter::Next
+            }
+            Instruction::GoToNPlusV0(addr) => {
+                ProgramCounter::Jump(addr + self.get_register(0x0) as u16)
+            }
+            Instruction::Random(RegisterValuePair { register, value }) => {
+                let mut rng = rand::thread_rng();
+                let rnd: u8 = rng.gen();
+                self.set_register(register, rnd & value);
+                ProgramCounter::Next
+            }
+            Instruction::Draw {x, y, height} => {
+                self.set_vf(0x0);
+                
+            }
+            Instruction::SkipIfKeyPressed(register) => {
+                let reg_value = self.get_register(register);
+                skip_if(self.input[reg_value as usize])
+            }
+            Instruction::SkipIfKeyNotPressed(register) => {
+                let reg_value = self.get_register(register);
+                skip_if(!self.input[reg_value as usize])
+            }
+            Instruction::SetXAsDelay(register) => {
+                self.set_register(register, self.delay_timer);
+                ProgramCounter::Next
+            }
+            Instruction::WaitForInputAndStoreIn(register) => {
+                self.waiting_for_key = Some(register);
+                ProgramCounter::Next
+            }
+            Instruction::SetDelayAsX(register) => {
+                self.delay_timer = self.get_register(register);
+                ProgramCounter::Next
+            }
+            Instruction::SetSoundAsX(register) => {
+                self.sound_timer = self.get_register(register);
+                ProgramCounter::Next
             }
             Instruction::AddXToI(register) => {
                 let (result, _) = self
                     .index
                     .overflowing_add(self.get_register(register) as u16);
                 self.index = result;
-                self.increment_pc();
+                ProgramCounter::Next
             }
-            Instruction::SkipIfEqual(RegisterValuePair { register, value }) => {
-                self.skip_if(self.get_register(register) == value);
+            Instruction::StoreBCD(register) => {
+                let value = self.get_register(register);
+                self.set_memory(self.index, value / 100);
+                self.set_memory(self.index + 1, (value % 100) / 10);
+                self.set_memory(self.index + 2, value % 10);
+                ProgramCounter::Next
             }
-            Instruction::SkipIfDifferent(RegisterValuePair { register, value }) => {
-                self.skip_if(self.get_register(register) != value);
+            Instruction::DumpRegisters(limit) => {
+                for i in 0..limit + 1 {
+                    self.set_memory(self.index, self.get_register(i));
+                    self.index += 1;
+                }
+                ProgramCounter::Next
             }
-            Instruction::SkipIfRegisterEqual(TargetSourcePair { target, source }) => {
-                self.skip_if(self.get_register(target) == self.get_register(source));
-            }
-            Instruction::SkipIfRegisterDifferent(TargetSourcePair { target, source }) => {
-                self.skip_if(self.get_register(target) != self.get_register(source));
+            Instruction::LoadRegisters(limit) => {
+                for i in 0..limit + 1 {
+                    self.set_register(i, self.get_memory(self.index));
+                    self.index += 1;
+                }
+                ProgramCounter::Next
             }
         }
     }
 
-    fn emulate_cycle(&mut self) {
-        let position = self.program_counter as usize;
-        let mut op_code = &self.memory[position..position + 2];
-        let op_code = op_code.read_u16::<BigEndian>().unwrap();
+    fn emulate_cycle(&mut self, input: [bool; 16]) {
+        self.input = input;
 
-        self.execute_op(op_code);
+        if let Some(register) = self.waiting_for_key {
+            if let Some(index) = input.iter().position(|val| {*val}) {
+                self.waiting_for_key = None;
+                self.set_register(register, index as u8);
+            }
+        } else {
+            let position = self.program_counter as usize;
+            let mut op_code = &self.memory[position..position + 2];
+            let op_code = op_code.read_u16::<BigEndian>().unwrap();
 
-        if self.delay_timer > 0 {
-            self.delay_timer -= 1
-        };
+            let pg_op = self.execute_op(op_code);
 
-        match self.sound_timer {
-            0 => {}
-            1 => println!("Bip bop boop"),
-            _ => self.sound_timer -= 1,
+            self.program_counter = match pg_op {
+                ProgramCounter::Next => self.program_counter + OP_SIZE,
+                ProgramCounter::Skip => self.program_counter + 2 * OP_SIZE,
+                ProgramCounter::Jump(addr) => addr,
+            };
+
+            if self.delay_timer > 0 {
+                self.delay_timer -= 1
+            };
+
+            match self.sound_timer {
+                0 => {}
+                1 => println!("Bip bop boop"),
+                _ => self.sound_timer -= 1,
+            }
         }
     }
 }
