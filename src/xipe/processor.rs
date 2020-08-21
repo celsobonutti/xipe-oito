@@ -7,7 +7,6 @@ use super::input::Input;
 use super::instructions::{self, Instruction, RegisterValuePair, TargetSourcePair};
 
 const MEMORY_SIZE: usize = 4096;
-const SCREEN_SIZE: usize = 64 * 32;
 const OP_SIZE: u16 = 2;
 
 enum ProgramCounter {
@@ -37,10 +36,11 @@ pub struct Chip8 {
     stack_pointer: usize,
     input: Input,
     waiting_for_key: Option<u8>,
+    on_buzz: fn(),
 }
 
 impl Chip8 {
-    pub fn new() -> Chip8 {
+    pub fn new(on_buzz: fn()) -> Chip8 {
         let mut memory = [0; MEMORY_SIZE];
 
         for (index, character) in FONTSET.iter().enumerate() {
@@ -60,6 +60,7 @@ impl Chip8 {
             stack_pointer: 0,
             input: Input::new(),
             waiting_for_key: None,
+            on_buzz,
         }
     }
 
@@ -277,12 +278,12 @@ impl Chip8 {
                 }
                 ProgramCounter::Next
             }
+            Instruction::InvalidInstruction => ProgramCounter::Next,
             _ => ProgramCounter::Next
         }
     }
 
     fn emulate_cycle(&mut self) {
-
         if let Some(register) = self.waiting_for_key {
             if let Some(index) = self.input.keypad.iter().position(|val| *val) {
                 self.waiting_for_key = None;
@@ -307,7 +308,7 @@ impl Chip8 {
 
             match self.sound_timer {
                 0 => {}
-                1 => println!("Bip bop boop"),
+                1 => (self.on_buzz)(),
                 _ => self.sound_timer -= 1,
             }
         }
