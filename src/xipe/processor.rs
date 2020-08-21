@@ -1,6 +1,7 @@
 use byteorder::{BigEndian, ReadBytesExt};
 use rand::Rng;
 
+use super::display::Display;
 use super::fontset::FONTSET;
 use super::input::Input;
 use super::instructions::{self, Instruction, RegisterValuePair, TargetSourcePair};
@@ -29,7 +30,7 @@ pub struct Chip8 {
     pub registers: [u8; 16],
     pub index: u16,
     pub program_counter: u16,
-    pub gfx: [bool; SCREEN_SIZE],
+    pub display: Display,
     delay_timer: u8,
     sound_timer: u8,
     stack: [u16; 16],
@@ -52,7 +53,7 @@ impl Chip8 {
             registers: [0; 16],
             index: 0,
             program_counter: 0x200,
-            gfx: [false; SCREEN_SIZE],
+            display: Display::new(),
             delay_timer: 0,
             sound_timer: 0,
             stack: [0; 16],
@@ -105,7 +106,7 @@ impl Chip8 {
                 ProgramCounter::Next
             }
             Instruction::ClearDisplay => {
-                self.gfx = [false; 64 * 32];
+                self.display.clear();
                 ProgramCounter::Next
             }
             Instruction::Return => ProgramCounter::Jump(self.pop_stack()),
@@ -215,8 +216,13 @@ impl Chip8 {
                 self.set_register(register, rnd & value);
                 ProgramCounter::Next
             }
-            Instruction::Draw {x, y, height} => {
+            Instruction::Draw { x, y, height } => {
                 self.set_vf(0x0);
+                self.display.draw(
+                    x as usize,
+                    y as usize,
+                    &self.memory[self.index as usize..(self.index + height as u16) as usize],
+                );
                 ProgramCounter::Next
             }
             Instruction::SkipIfKeyPressed(register) => {
@@ -278,7 +284,7 @@ impl Chip8 {
     fn emulate_cycle(&mut self) {
 
         if let Some(register) = self.waiting_for_key {
-            if let Some(index) = self.input.keypad.iter().position(|val| {*val}) {
+            if let Some(index) = self.input.keypad.iter().position(|val| *val) {
                 self.waiting_for_key = None;
                 self.set_register(register, index as u8);
             }
