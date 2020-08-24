@@ -1,5 +1,5 @@
-pub mod processor;
-mod instructions;
+mod display;
 mod fontset;
 mod input;
-mod display;
+mod instructions;
+pub mod processor;

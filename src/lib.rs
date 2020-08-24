@@ -7,7 +7,5 @@ fn emit_sound() {
 }
 
 pub fn start() -> processor::Chip8 {
-  processor::Chip8::new(
-    emit_sound
-  )
+  processor::Chip8::new(emit_sound)
 }
