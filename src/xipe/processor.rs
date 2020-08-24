@@ -265,14 +265,14 @@ impl Chip8 {
                 ProgramCounter::Next
             }
             Instruction::DumpRegisters(limit) => {
-                for i in 0..limit + 1 {
+                for i in 0..=limit {
                     self.set_memory(self.index, self.get_register(i));
                     self.index += 1;
                 }
                 ProgramCounter::Next
             }
             Instruction::LoadRegisters(limit) => {
-                for i in 0..limit + 1 {
+                for i in 0..=limit {
                     self.set_register(i, self.get_memory(self.index));
                     self.index += 1;
                 }
