@@ -60,7 +60,7 @@ pub enum Instruction {
   SetDelayAsX(u8),
   SetSoundAsX(u8),
   AddXToI(u8),
-  SetIAsSprite(u8),
+  SetIAsFontSprite(u8),
   StoreBCD(u8),
   DumpRegisters(u8),
   LoadRegisters(u8),
@@ -122,7 +122,7 @@ pub fn decode(op_code: u16) -> Instruction {
     ['F', x, '1', '5'] => Instruction::SetDelayAsX(hex_char_to_integer!(x)),
     ['F', x, '1', '8'] => Instruction::SetSoundAsX(hex_char_to_integer!(x)),
     ['F', x, '1', 'E'] => Instruction::AddXToI(hex_char_to_integer!(x)),
-    ['F', x, '2', '9'] => Instruction::SetIAsSprite(hex_char_to_integer!(x)),
+    ['F', x, '2', '9'] => Instruction::SetIAsFontSprite(hex_char_to_integer!(x)),
     ['F', x, '3', '3'] => Instruction::StoreBCD(hex_char_to_integer!(x)),
     ['F', x, '5', '5'] => Instruction::DumpRegisters(hex_char_to_integer!(x)),
     ['F', x, '6', '5'] => Instruction::LoadRegisters(hex_char_to_integer!(x)),
@@ -381,8 +381,8 @@ mod tests {
   }
 
   #[test]
-  fn set_sprite_to_i() {
-    assert_eq!(Instruction::SetIAsSprite(0x3), decode(0xF329))
+  fn assign_font_sprite_to_i() {
+    assert_eq!(Instruction::SetIAsFontSprite(0x3), decode(0xF329))
   }
 
   #[test]

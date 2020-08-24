@@ -276,6 +276,10 @@ impl Chip8 {
         }
         ProgramCounter::Next
       },
+      Instruction::SetIAsFontSprite(register) => {
+        self.index = self.get_register(register) as u16 * 5;
+        ProgramCounter::Next
+      }
       Instruction::InvalidInstruction => ProgramCounter::Next,
     }
   }
