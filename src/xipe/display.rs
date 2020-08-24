@@ -24,7 +24,26 @@ impl Display {
         self.pixels[x + y * SCREEN_WIDTH]
     }
 
-    pub fn draw(&mut self, x: usize, y: usize, sprite: &[u8]) {}
+    fn xor_pixel(&mut self, x: usize, y: usize, new_value: bool) {
+        let current = self.get_pixel(x, y);
+        self.set_pixel(x, y, current ^ new_value);
+    }
+
+    pub fn draw(&mut self, x: usize, y: usize, sprite: &[u8]) {
+        sprite.iter().enumerate().for_each(|(line_number, line)| {
+            if line_number + y < 32 {
+                format!("{:08b}", line)
+                    .chars()
+                    .map(|char| char == '1')
+                    .enumerate()
+                    .for_each(|(column_number, pixel)| {
+                        if column_number + x < 64 {
+                            self.xor_pixel(x + column_number, y + line_number, pixel);
+                        }
+                    });
+            }
+        });
+    }
 }
 
 #[cfg(test)]
@@ -54,6 +73,33 @@ mod tests {
         display.set_pixel(1, 3, true);
         display.set_pixel(5, 15, true);
         display.clear();
+        assert!(display.pixels.iter().all(|pixel| { !*pixel }));
+    }
+
+    #[test]
+    fn draw() {
+        let lines: [u8; 4] = [0b01101100, 0b00011000, 0b00011000, 0b00111100];
+        let mut display = Display::new();
+        display.draw(0, 0, &lines);
+        for i in 0..4 {
+            for j in 0..8 {
+                if i == 0 {
+                    assert_eq!(display.get_pixel(j, i), [1, 2, 4, 5].contains(&j));
+                } else if i < 3 {
+                    assert_eq!(display.get_pixel(j, i), [3, 4].contains(&j));
+                } else {
+                    assert_eq!(display.get_pixel(j, i), [2, 3, 4, 5].contains(&j));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn draw_erases() {
+        let lines: [u8; 4] = [0b01101100, 0b00011000, 0b00011000, 0b00111100];
+        let mut display = Display::new();
+        display.draw(0, 0, &lines);
+        display.draw(0, 0, &lines);
         assert!(display.pixels.iter().all(|pixel| { !*pixel }));
     }
 }
