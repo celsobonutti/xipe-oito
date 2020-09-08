@@ -275,7 +275,7 @@ impl Chip8 {
           self.index += 1;
         }
         ProgramCounter::Next
-      },
+      }
       Instruction::SetIAsFontSprite(register) => {
         self.index = self.get_register(register) as u16 * 5;
         ProgramCounter::Next
@@ -312,6 +312,171 @@ impl Chip8 {
         1 => (self.on_buzz)(),
         _ => self.sound_timer -= 1,
       }
+    }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn buzz() {
+    println!("Buzzzzz");
+  }
+
+  fn emulate_cycles(chip: &mut Chip8, number_of_cycles: usize) {
+    for _ in 0..number_of_cycles {
+      chip.emulate_cycle();
+    }
+  }
+
+  #[test]
+  fn load_cartridge() {
+    let mut chip8 = Chip8::new(buzz);
+    chip8.load(vec![0xFF, 0xF1, 0x01, 0x22]);
+    assert_eq!(chip8.memory[512..=515], [0xFF, 0xF1, 0x01, 0x22]);
+  }
+
+  // self.stack[self.stack_pointer] = self.program_counter + 2;
+  // self.stack_pointer += 1;
+
+  #[test]
+  fn call_subroutine_return_and_jump() {
+    let mut chip8 = Chip8::new(buzz);
+    chip8.load(vec![0x22, 0x04, 0x12, 0x00, 0x00, 0xEE]);
+    chip8.emulate_cycle();
+    assert_eq!(chip8.stack[0], 0x202);
+    assert_eq!(chip8.stack_pointer, 1);
+    assert_eq!(chip8.program_counter, 0x204);
+    chip8.emulate_cycle();
+    assert_eq!(chip8.stack_pointer, 0);
+    assert_eq!(chip8.program_counter, 0x202);
+    chip8.emulate_cycle();
+    assert_eq!(chip8.program_counter, 0x200);
+  }
+
+  #[test]
+  fn vx_operations() {
+    let mut chip8 = Chip8::new(buzz);
+
+    let instructions = vec![
+      0x61, 0xF0, // v1 = 0xf0
+      0x71, 0x11, // v1 = 0xf0 + 0x11
+      0x82, 0x10, // v2 = v1
+      0x61, 0xF0, // v1 = 0xf0
+      0x62, 0x11, // v2 = 0x11
+      0x81, 0x21, // v1 = v1 | v2 => 0xf1
+      0x81, 0x22, // v1 = v1 & v2 => 0x11
+      0x61, 0x21, // v1 = 0x21
+      0x81, 0x23, // v1 = v1 ^ v2 => 0x30
+      0x61, 0xF0, // v1 = 0xf0
+      0x81, 0x24, // v1 = v1 + v2 => 0x01; vf = 0x01
+      0x81, 0x25, // v1 = v1 - v2 => 0xf0; vf = 0x00
+    ];
+
+    chip8.load(instructions);
+
+    chip8.emulate_cycle();
+    assert_eq!(chip8.get_register(1), 0xF0);
+    chip8.emulate_cycle();
+    assert_eq!(chip8.get_register(1), 0x01);
+    assert_eq!(chip8.get_register(0xf), 0x00);
+    chip8.emulate_cycle();
+    assert_eq!(chip8.get_register(1), chip8.get_register(2));
+    chip8.emulate_cycle();
+    chip8.emulate_cycle();
+    chip8.emulate_cycle();
+    assert_eq!(chip8.get_register(1), 0xf1);
+    chip8.emulate_cycle();
+    assert_eq!(chip8.get_register(1), 0x11);
+    chip8.emulate_cycle();
+    chip8.emulate_cycle();
+    assert_eq!(chip8.get_register(1), 0x30);
+    chip8.emulate_cycle();
+    chip8.emulate_cycle();
+    assert_eq!(chip8.get_register(1), 0x01);
+    assert_eq!(chip8.get_register(0xf), 0x01);
+    chip8.emulate_cycle();
+    assert_eq!(chip8.get_register(1), 0xf0);
+    assert_eq!(chip8.get_register(0xf), 0x00);
+  }
+
+  #[test]
+  fn set_i_register() {
+    let mut chip8 = Chip8::new(buzz);
+
+    let instructions = vec![
+      0xA5, 0x00,
+      0x60, 0x05,
+      0xF0, 0x1E
+    ];
+
+    chip8.load(instructions);
+
+    assert_eq!(chip8.index, 0x0);
+    
+    chip8.emulate_cycle();
+
+    assert_eq!(chip8.index, 0x500);
+
+    chip8.emulate_cycle();
+
+    chip8.emulate_cycle();
+
+    assert_eq!(chip8.index, 0x505);
+  }
+
+  #[test]
+  fn dump_and_load_registers() {
+    let mut chip8 = Chip8::new(buzz);
+
+    let instructions = vec![
+      0xA4, 0x00,
+      0x60, 0xF0,
+      0x61, 0xDD,
+      0x62, 0x1E,
+      0x63, 0x17,
+      0x64, 0x4D,
+      0x65, 0x29,
+      0xF5, 0x55,
+      0x60, 0x00,
+      0x61, 0x00,
+      0x62, 0x00,
+      0x63, 0x00,
+      0x64, 0x00,
+      0x65, 0x00,
+      0xA4, 0x00,
+      0xF5, 0x65
+    ];
+
+    chip8.load(instructions);
+
+    chip8.emulate_cycle();
+
+    assert_eq!(chip8.index, 0x400);
+
+    emulate_cycles(&mut chip8, 6);
+
+    chip8.emulate_cycle();
+
+    assert_eq!(chip8.index, 0x406);
+
+    for index in 0..=5 {
+      assert_eq!(chip8.get_register(index), chip8.get_memory(0x400 + index as u16));
+    }
+
+    emulate_cycles(&mut chip8, 6);
+
+    for index in 0..=5 {
+      assert_eq!(chip8.get_register(index), 0x0);
+    }
+
+    chip8.emulate_cycle();
+
+    emulate_cycles(&mut chip8, 6);
+
+    for index in 0..=5 {
+      assert_eq!(chip8.get_register(index), chip8.get_memory(0x400 + index as u16));
     }
   }
 }
