@@ -336,10 +336,7 @@ mod tests {
     chip8.load(vec![0xFF, 0xF1, 0x01, 0x22]);
     assert_eq!(chip8.memory[512..=515], [0xFF, 0xF1, 0x01, 0x22]);
   }
-
-  // self.stack[self.stack_pointer] = self.program_counter + 2;
-  // self.stack_pointer += 1;
-
+  
   #[test]
   fn call_subroutine_return_and_jump() {
     let mut chip8 = Chip8::new(buzz);
@@ -413,6 +410,7 @@ mod tests {
       0xF0, 0x29,
       0xA5, 0x00,
       0x60, 218,
+      0xF0, 0x33
     ];
 
     chip8.load(instructions);
@@ -431,9 +429,11 @@ mod tests {
 
     assert_eq!(chip8.index, 15);
 
-    emulate_cycles(&mut chip8, 2);
+    emulate_cycles(&mut chip8, 3);
     
-    assert_eq!(chip8.index, 2);
+    assert_eq!(chip8.get_memory(chip8.index), 2);
+    assert_eq!(chip8.get_memory(chip8.index + 1), 1);
+    assert_eq!(chip8.get_memory(chip8.index + 2), 8);
   }
 
   #[test]
@@ -481,9 +481,7 @@ mod tests {
       assert_eq!(chip8.get_register(index), 0x0);
     }
 
-    chip8.emulate_cycle();
-
-    emulate_cycles(&mut chip8, 6);
+    emulate_cycles(&mut chip8, 2);
 
     for index in 0..=5 {
       assert_eq!(chip8.get_register(index), chip8.get_memory(0x400 + index as u16));
