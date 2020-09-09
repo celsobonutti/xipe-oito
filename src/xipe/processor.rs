@@ -408,7 +408,11 @@ mod tests {
     let instructions = vec![
       0xA5, 0x00,
       0x60, 0x05,
-      0xF0, 0x1E
+      0xF0, 0x1E,
+      0x60, 0x03,
+      0xF0, 0x29,
+      0xA5, 0x00,
+      0x60, 218,
     ];
 
     chip8.load(instructions);
@@ -419,11 +423,17 @@ mod tests {
 
     assert_eq!(chip8.index, 0x500);
 
-    chip8.emulate_cycle();
-
-    chip8.emulate_cycle();
+    emulate_cycles(&mut chip8, 2);
 
     assert_eq!(chip8.index, 0x505);
+
+    emulate_cycles(&mut chip8, 2);
+
+    assert_eq!(chip8.index, 15);
+
+    emulate_cycles(&mut chip8, 2);
+    
+    assert_eq!(chip8.index, 2);
   }
 
   #[test]
