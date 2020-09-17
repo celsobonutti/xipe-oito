@@ -1,5 +1,8 @@
 use byteorder::{BigEndian, ReadBytesExt};
 use rand::Rng;
+use std::rc::Rc;
+
+use std::cell::RefCell;
 
 use super::display::Display;
 use super::fontset::FONTSET;
@@ -36,11 +39,11 @@ pub struct Chip8 {
   stack_pointer: usize,
   input: Input,
   waiting_for_key: Option<u8>,
-  on_buzz: fn(),
+  on_buzz: Box<dyn Fn()>,
 }
 
 impl Chip8 {
-  pub fn new(on_buzz: fn()) -> Chip8 {
+  pub fn new(on_buzz: Box<dyn Fn()>) -> Chip8 {
     let mut memory = [0; MEMORY_SIZE];
 
     for (index, character) in FONTSET.iter().enumerate() {
@@ -309,7 +312,10 @@ impl Chip8 {
 
       match self.sound_timer {
         0 => {}
-        1 => (self.on_buzz)(),
+        1 => {
+          (self.on_buzz)();
+          self.sound_timer -= 1
+        },
         _ => self.sound_timer -= 1,
       }
     }
@@ -320,10 +326,6 @@ impl Chip8 {
 mod tests {
   use super::*;
 
-  fn buzz() {
-    println!("Buzzzzz");
-  }
-
   fn emulate_cycles(chip: &mut Chip8, number_of_cycles: usize) {
     for _ in 0..number_of_cycles {
       chip.emulate_cycle();
@@ -332,14 +334,14 @@ mod tests {
 
   #[test]
   fn load_cartridge() {
-    let mut chip8 = Chip8::new(buzz);
+    let mut chip8 = Chip8::new(Box::new(|| {}));
     chip8.load(vec![0xFF, 0xF1, 0x01, 0x22]);
     assert_eq!(chip8.memory[512..=515], [0xFF, 0xF1, 0x01, 0x22]);
   }
-  
+
   #[test]
   fn call_subroutine_return_and_jump() {
-    let mut chip8 = Chip8::new(buzz);
+    let mut chip8 = Chip8::new(Box::new(|| {}));
     chip8.load(vec![0x22, 0x04, 0x12, 0x00, 0x00, 0xEE]);
     chip8.emulate_cycle();
     assert_eq!(chip8.stack[0], 0x202);
@@ -354,7 +356,7 @@ mod tests {
 
   #[test]
   fn vx_operations() {
-    let mut chip8 = Chip8::new(buzz);
+    let mut chip8 = Chip8::new(Box::new(|| {}));
 
     let instructions = vec![
       0x61, 0xF0, // v1 = 0xf0
@@ -400,7 +402,7 @@ mod tests {
 
   #[test]
   fn set_i_register() {
-    let mut chip8 = Chip8::new(buzz);
+    let mut chip8 = Chip8::new(Box::new(|| {}));
 
     let instructions = vec![
       0xA5, 0x00,
@@ -438,7 +440,7 @@ mod tests {
 
   #[test]
   fn dump_and_load_registers() {
-    let mut chip8 = Chip8::new(buzz);
+    let mut chip8 = Chip8::new(Box::new(|| {}));
 
     let instructions = vec![
       0xA4, 0x00,
@@ -486,5 +488,33 @@ mod tests {
     for index in 0..=5 {
       assert_eq!(chip8.get_register(index), chip8.get_memory(0x400 + index as u16));
     }
+  }
+
+  #[test]
+  fn timers() {
+    let mut chip8 = Chip8::new(Box::new(||{}));
+
+    let instructions = vec![
+      0x60, 0x02,
+      0xF0, 0x15,
+      0xF0, 0x18
+    ];
+
+    chip8.load(instructions);
+
+    chip8.emulate_cycle();
+
+    chip8.emulate_cycle();
+
+    assert_eq!(chip8.delay_timer, 1);
+
+    chip8.emulate_cycle();
+
+    assert_eq!(chip8.delay_timer, 0);
+    assert_eq!(chip8.sound_timer, 1);
+
+    chip8.emulate_cycle();
+
+    assert_eq!(chip8.sound_timer, 0);
   }
 }
