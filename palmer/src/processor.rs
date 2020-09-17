@@ -1,8 +1,5 @@
 use byteorder::{BigEndian, ReadBytesExt};
 use rand::Rng;
-use std::rc::Rc;
-
-use std::cell::RefCell;
 
 use super::display::Display;
 use super::fontset::FONTSET;
@@ -27,17 +24,16 @@ fn skip_if(condition: bool) -> ProgramCounter {
 }
 
 pub struct Chip8 {
-  pub operation_code: u16,
-  pub memory: [u8; MEMORY_SIZE],
-  pub registers: [u8; 16],
-  pub index: u16,
-  pub program_counter: u16,
   pub display: Display,
+  pub input: Input,
+  memory: [u8; MEMORY_SIZE],
+  registers: [u8; 16],
+  index: u16,
+  program_counter: u16,
   delay_timer: u8,
   sound_timer: u8,
   stack: [u16; 16],
   stack_pointer: usize,
-  input: Input,
   waiting_for_key: Option<u8>,
   on_buzz: Box<dyn Fn()>,
 }
@@ -51,7 +47,6 @@ impl Chip8 {
     }
 
     Chip8 {
-      operation_code: 0,
       memory,
       registers: [0; 16],
       index: 0,
@@ -71,6 +66,22 @@ impl Chip8 {
     for (index, value) in buffer.iter().enumerate() {
       self.memory[index + 512] = *value;
     }
+  }
+
+  pub fn reset(&mut self) {
+    for index in 512..=MEMORY_SIZE {
+      self.memory[index] = 0;
+    }
+
+    self.registers = [0; 16];
+    self.index = 0;
+    self.program_counter = 0x200;
+    self.display = Display::new();
+    self.delay_timer = 0;
+    self.sound_timer = 0;
+    self.stack = [0; 16];
+    self.stack_pointer = 0;
+    self.waiting_for_key = None;
   }
 
   fn set_register(&mut self, register: u8, value: u8) {

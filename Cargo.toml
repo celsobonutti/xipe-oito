@@ -1,11 +1,6 @@
-[package]
-name = "xipe-oito"
-version = "0.1.0"
-authors = ["Celso Bonutti Filho <celso.bonuttif@gmail.com>"]
-edition = "2018"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-byteorder = "1"
-rand = "0.7.3"
+members = [
+  "emerson",
+  "palmer"
+]
