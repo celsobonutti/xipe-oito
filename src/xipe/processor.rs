@@ -287,7 +287,7 @@ impl Chip8 {
     }
   }
 
-  fn emulate_cycle(&mut self) {
+  pub fn emulate_cycle(&mut self) {
     if let Some(register) = self.waiting_for_key {
       if let Some(index) = self.input.keypad.iter().position(|val| *val) {
         self.waiting_for_key = None;
