@@ -1,10 +1,12 @@
 [package]
-name = "emerson"
-version = "0.1.0"
 authors = ["Celso Bonutti Filho <celso.bonuttif@gmail.com>"]
 edition = "2018"
+name = "emerson"
+version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-palmer = { path = "../palmer" }
+iced = {git = "https://github.com/hecrj/iced", branch = "master", features = ["glow", "glow_canvas", "tokio", "debug"]}
+palmer = {path = "../palmer"}
+tokio = {version = "0.2", features = ["blocking"]}

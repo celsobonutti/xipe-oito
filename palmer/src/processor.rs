@@ -1,5 +1,6 @@
 use byteorder::{BigEndian, ReadBytesExt};
 use rand::Rng;
+use std::default::Default;
 
 use super::display::Display;
 use super::fontset::FONTSET;
@@ -38,8 +39,8 @@ pub struct Chip8 {
   on_buzz: Box<dyn Fn()>,
 }
 
-impl Chip8 {
-  pub fn new(on_buzz: Box<dyn Fn()>) -> Chip8 {
+impl Default for Chip8 {
+  fn default() -> Self {
     let mut memory = [0; MEMORY_SIZE];
 
     for (index, character) in FONTSET.iter().enumerate() {
@@ -58,7 +59,16 @@ impl Chip8 {
       stack_pointer: 0,
       input: Input::new(),
       waiting_for_key: None,
+      on_buzz: Box::new(|| {}),
+    }
+  }
+}
+
+impl Chip8 {
+  pub fn new(on_buzz: Box<dyn Fn()>) -> Chip8 {
+    Chip8 {
       on_buzz,
+      ..Default::default()
     }
   }
 
@@ -232,8 +242,8 @@ impl Chip8 {
       Instruction::Draw { x, y, height } => {
         self.set_vf(0x0);
         self.display.draw(
-          x as usize,
-          y as usize,
+          self.get_register(x) as usize,
+          self.get_register(y) as usize,
           &self.memory[self.index as usize..(self.index + height as u16) as usize],
         );
         ProgramCounter::Next
