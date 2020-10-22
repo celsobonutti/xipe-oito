@@ -144,7 +144,7 @@ impl Application for Emerson {
   fn subscription(&self) -> Subscription<Self::Message> {
     if self.cartridge_loaded {
       Subscription::batch(vec![
-        time::every(Duration::from_micros(20 as u64)).map(Message::Tick),
+        time::every(Duration::from_millis(2 as u64)).map(Message::Tick),
         iced_native::subscription::events().map(Message::Event),
       ])
     } else {
