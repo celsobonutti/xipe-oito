@@ -8,5 +8,6 @@ version = "0.1.0"
 
 [dependencies]
 iced = {git = "https://github.com/hecrj/iced", branch = "master", features = ["glow", "glow_canvas", "tokio", "debug"]}
+iced_native = {git = "https://github.com/hecrj/iced", branch = "master"}
 palmer = {path = "../palmer"}
 tokio = {version = "0.2", features = ["blocking"]}
