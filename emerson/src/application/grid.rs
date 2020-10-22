@@ -1,10 +1,8 @@
 use iced::{
-  canvas::{self, Cache, Canvas, Cursor, Geometry, Path},
+  canvas::{self, Cache, Canvas, Cursor, Geometry},
   Color, Element, Point, Rectangle, Size,
 };
 use palmer::display::{get_pixel, Pixels, SCREEN_HEIGHT, SCREEN_WIDTH};
-
-pub const SCALE: usize = 10;
 
 pub struct Grid {
   display: Pixels,
@@ -41,8 +39,8 @@ impl Grid {
 
   pub fn view<'a>(&'a mut self) -> Element<'a, Message> {
     Canvas::new(self)
-      .width(iced::Length::Units((SCREEN_WIDTH * SCALE) as u16))
-      .height(iced::Length::Units((SCREEN_HEIGHT * SCALE) as u16))
+      .width(iced::Length::Units(SCREEN_WIDTH as u16))
+      .height(iced::Length::Units(SCREEN_HEIGHT as u16))
       .into()
   }
 }
@@ -50,9 +48,6 @@ impl Grid {
 impl<'a> canvas::Program<Message> for Grid {
   fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
     let pixels = self.display_cache.draw(bounds.size(), |frame| {
-      let background = Path::rectangle(Point::ORIGIN, frame.size());
-      frame.fill(&background, Color::BLACK);
-
       frame.with_save(|frame| {
         for x in 0..SCREEN_WIDTH {
           for y in 0..SCREEN_HEIGHT {
@@ -63,8 +58,8 @@ impl<'a> canvas::Program<Message> for Grid {
             };
 
             frame.fill_rectangle(
-              Point::new((x * SCALE) as f32, (y * SCALE) as f32),
-              Size::new(SCALE as f32, SCALE as f32),
+              Point::new(x as f32, y as f32),
+              Size::UNIT,
               color,
             )
           }

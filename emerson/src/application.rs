@@ -1,6 +1,6 @@
 use iced::time;
 use iced::{
-  executor, window, Application, Column, Command, Container, Element, Settings, Subscription,
+  executor, window, Application, Column, Command, Container, Element, Settings, Subscription, Color
 };
 use palmer::Chip8;
 use std::fs::File;
@@ -28,8 +28,8 @@ pub fn run() -> iced::Result {
     antialiasing: false,
     window: window::Settings {
       size: (
-        (palmer::display::SCREEN_WIDTH * grid::SCALE) as u32,
-        (palmer::display::SCREEN_HEIGHT * grid::SCALE) as u32,
+        (palmer::display::SCREEN_WIDTH * 10) as u32,
+        (palmer::display::SCREEN_HEIGHT * 10) as u32,
       ),
       resizable: false,
       ..window::Settings::default()
@@ -42,6 +42,14 @@ impl Application for Emerson {
   type Message = Message;
   type Executor = executor::Default;
   type Flags = ();
+
+  fn scale_factor(&self) -> f64 {
+      10.
+  }
+
+  fn background_color(&self) -> Color {
+      Color::BLACK
+  }
 
   fn new(_flags: ()) -> (Self, Command<Message>) {
     let mut xipe = Chip8::new(Box::new(|| {}));
