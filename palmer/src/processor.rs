@@ -37,6 +37,7 @@ pub struct Chip8 {
   stack_pointer: usize,
   waiting_for_key: Option<u8>,
   on_buzz: Box<dyn Fn()>,
+  should_draw: bool
 }
 
 impl Default for Chip8 {
@@ -60,6 +61,7 @@ impl Default for Chip8 {
       input: Input::new(),
       waiting_for_key: None,
       on_buzz: Box::new(|| {}),
+      should_draw: false
     }
   }
 }
@@ -92,6 +94,10 @@ impl Chip8 {
     self.stack = [0; 16];
     self.stack_pointer = 0;
     self.waiting_for_key = None;
+  }
+
+  pub fn should_draw(&self) -> bool {
+    self.should_draw
   }
 
   fn set_register(&mut self, register: u8, value: u8) {
@@ -246,6 +252,7 @@ impl Chip8 {
           self.get_register(y) as usize,
           &self.memory[self.index as usize..(self.index + height as u16) as usize],
         );
+        self.should_draw = true;
         ProgramCounter::Next
       }
       Instruction::SkipIfKeyPressed(register) => {
@@ -309,6 +316,9 @@ impl Chip8 {
   }
 
   pub fn emulate_cycle(&mut self) {
+    if self.should_draw {
+      self.should_draw = false;
+    }
     if let Some(register) = self.waiting_for_key {
       if let Some(index) = self.input.keypad.iter().position(|val| *val) {
         self.waiting_for_key = None;

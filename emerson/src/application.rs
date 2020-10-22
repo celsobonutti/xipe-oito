@@ -82,7 +82,7 @@ impl Application for Emerson {
   fn new(_flags: ()) -> (Self, Command<Message>) {
     let mut xipe = Chip8::new(Box::new(|| {}));
 
-    let mut file = File::open("particle.ch8").unwrap();
+    let mut file = File::open("snake.ch8").unwrap();
     let mut buffer = Vec::new();
 
     file.read_to_end(&mut buffer).unwrap();
@@ -107,9 +107,11 @@ impl Application for Emerson {
     match message {
       Message::Tick(_) => {
         self.engine.emulate_cycle();
-        self
-          .display
-          .update(grid::Message::Show(self.engine.display.pixels))
+        if self.engine.should_draw() {
+          self
+            .display
+            .update(grid::Message::Show(self.engine.display.pixels));
+        }
       }
       Message::Display(_) => (),
       Message::Event(event) => match event {
@@ -142,7 +144,7 @@ impl Application for Emerson {
   fn subscription(&self) -> Subscription<Self::Message> {
     if self.cartridge_loaded {
       Subscription::batch(vec![
-        time::every(Duration::from_millis(2 as u64)).map(Message::Tick),
+        time::every(Duration::from_micros(20 as u64)).map(Message::Tick),
         iced_native::subscription::events().map(Message::Event),
       ])
     } else {
