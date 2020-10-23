@@ -1,11 +1,11 @@
 use byteorder::{BigEndian, ReadBytesExt};
 use rand::Rng;
-use std::default::Default;
 
 use super::display::Display;
 use super::fontset::FONTSET;
 use super::input::Input;
 use super::instructions::{self, Instruction, RegisterValuePair, TargetSourcePair};
+use super::audio::AudioDriver;
 
 const MEMORY_SIZE: usize = 4096;
 const OP_SIZE: u16 = 2;
@@ -24,7 +24,7 @@ fn skip_if(condition: bool) -> ProgramCounter {
   }
 }
 
-pub struct Chip8 {
+pub struct Chip8<T: AudioDriver > {
   pub display: Display,
   pub input: Input,
   memory: [u8; MEMORY_SIZE],
@@ -36,12 +36,12 @@ pub struct Chip8 {
   stack: [u16; 16],
   stack_pointer: usize,
   waiting_for_key: Option<u8>,
-  on_buzz: Box<dyn Fn()>,
+  audio_driver: T,
   should_draw: bool
 }
 
-impl Default for Chip8 {
-  fn default() -> Self {
+impl<T: AudioDriver> Chip8<T> {
+  pub fn new(audio_driver: T) -> Chip8<T> {
     let mut memory = [0; MEMORY_SIZE];
 
     for (index, character) in FONTSET.iter().enumerate() {
@@ -60,17 +60,8 @@ impl Default for Chip8 {
       stack_pointer: 0,
       input: Input::new(),
       waiting_for_key: None,
-      on_buzz: Box::new(|| {}),
-      should_draw: false
-    }
-  }
-}
-
-impl Chip8 {
-  pub fn new(on_buzz: Box<dyn Fn()>) -> Chip8 {
-    Chip8 {
-      on_buzz,
-      ..Default::default()
+      should_draw: false,
+      audio_driver
     }
   }
 
@@ -342,12 +333,19 @@ impl Chip8 {
       };
 
       match self.sound_timer {
-        0 => {}
+        0 => {
+          self.audio_driver.pause_sound();
+        }
         1 => {
-          (self.on_buzz)();
+          self.audio_driver.play_sound();
           self.sound_timer -= 1
         },
-        _ => self.sound_timer -= 1,
+        _ => {
+          {
+            self.audio_driver.pause_sound();
+            self.sound_timer -= 1
+          }
+        },
       }
     }
   }
@@ -355,9 +353,29 @@ impl Chip8 {
 
 #[cfg(test)]
 mod tests {
+  struct TAD {
+    pub is_playing: bool
+  }
+
+  impl AudioDriver for TAD {
+    fn new() -> Self {
+        Self {
+          is_playing: false
+        }
+    }
+
+    fn play_sound(&mut self) {
+        self.is_playing = true;
+    }
+
+    fn pause_sound(&mut self) {
+        self.is_playing = false;
+    }
+  }
+
   use super::*;
 
-  fn emulate_cycles(chip: &mut Chip8, number_of_cycles: usize) {
+  fn emulate_cycles(chip: &mut Chip8<TAD>, number_of_cycles: usize) {
     for _ in 0..number_of_cycles {
       chip.emulate_cycle();
     }
@@ -365,14 +383,14 @@ mod tests {
 
   #[test]
   fn load_cartridge() {
-    let mut chip8 = Chip8::new(Box::new(|| {}));
+    let mut chip8 = Chip8::new(TAD::new());
     chip8.load(vec![0xFF, 0xF1, 0x01, 0x22]);
     assert_eq!(chip8.memory[512..=515], [0xFF, 0xF1, 0x01, 0x22]);
   }
 
   #[test]
   fn call_subroutine_return_and_jump() {
-    let mut chip8 = Chip8::new(Box::new(|| {}));
+    let mut chip8 = Chip8::new(TAD::new());
     chip8.load(vec![0x22, 0x04, 0x12, 0x00, 0x00, 0xEE]);
     chip8.emulate_cycle();
     assert_eq!(chip8.stack[0], 0x202);
@@ -387,7 +405,7 @@ mod tests {
 
   #[test]
   fn vx_operations() {
-    let mut chip8 = Chip8::new(Box::new(|| {}));
+    let mut chip8 = Chip8::new(TAD::new());
 
     let instructions = vec![
       0x61, 0xF0, // v1 = 0xf0
@@ -433,7 +451,7 @@ mod tests {
 
   #[test]
   fn set_i_register() {
-    let mut chip8 = Chip8::new(Box::new(|| {}));
+    let mut chip8 = Chip8::new(TAD::new());
 
     let instructions = vec![
       0xA5, 0x00,
@@ -471,7 +489,7 @@ mod tests {
 
   #[test]
   fn dump_and_load_registers() {
-    let mut chip8 = Chip8::new(Box::new(|| {}));
+    let mut chip8 = Chip8::new(TAD::new());
 
     let instructions = vec![
       0xA4, 0x00,
@@ -523,7 +541,7 @@ mod tests {
 
   #[test]
   fn timers() {
-    let mut chip8 = Chip8::new(Box::new(||{}));
+    let mut chip8 = Chip8::new(TAD::new());
 
     let instructions = vec![
       0x60, 0x02,
@@ -546,6 +564,7 @@ mod tests {
 
     chip8.emulate_cycle();
 
+    assert!(chip8.audio_driver.is_playing);
     assert_eq!(chip8.sound_timer, 0);
   }
 }

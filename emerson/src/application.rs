@@ -8,6 +8,7 @@ use iced::{
   window, Application, Color, Column, Command, Container, Element, Settings, Subscription,
 };
 use palmer::Chip8;
+use palmer::audio::AudioDriver;
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::prelude::*;
@@ -17,8 +18,32 @@ mod grid;
 
 use grid::Grid;
 
+struct TAD {
+  pub is_playing: bool
+}
+
+impl AudioDriver for TAD {
+  fn new() -> Self {
+      Self {
+        is_playing: false
+      }
+  }
+
+  fn play_sound(&mut self) {
+      self.is_playing = true;
+      println!("Boop!");
+  }
+
+  fn pause_sound(&mut self) {
+      if self.is_playing {
+        println!("Turn off the sound!");
+      }
+      self.is_playing = false;
+  }
+}
+
 struct Emerson {
-  engine: palmer::Chip8,
+  engine: palmer::Chip8<TAD>,
   display: grid::Grid,
   cartridge_loaded: bool,
 }
@@ -91,7 +116,7 @@ impl Application for Emerson {
   }
 
   fn new(flags: Flags) -> (Self, Command<Message>) {
-    let mut xipe = Chip8::new(Box::new(|| {}));
+    let mut xipe = Chip8::new(TAD::new());
 
     let mut file = File::open(flags.game_path).unwrap();
     let mut buffer = Vec::new();
