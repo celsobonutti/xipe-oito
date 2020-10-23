@@ -246,12 +246,12 @@ impl Chip8 {
         ProgramCounter::Next
       }
       Instruction::Draw { x, y, height } => {
-        self.set_vf(0x0);
-        self.display.draw(
+        let new_vf = self.display.draw(
           self.get_register(x) as usize,
           self.get_register(y) as usize,
           &self.memory[self.index as usize..(self.index + height as u16) as usize],
         );
+        self.set_vf(new_vf);
         self.should_draw = true;
         ProgramCounter::Next
       }

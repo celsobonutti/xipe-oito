@@ -8,6 +8,7 @@ use iced::{
   window, Application, Color, Column, Command, Container, Element, Settings, Subscription,
 };
 use palmer::Chip8;
+use std::path::PathBuf;
 use std::fs::File;
 use std::io::prelude::*;
 use std::time::{Duration, Instant};
@@ -51,9 +52,19 @@ enum Message {
   Event(iced_native::Event),
 }
 
-pub fn run() -> iced::Result {
+#[derive(Default, Debug)]
+struct Flags {
+  game_path: PathBuf,
+}
+
+pub fn run(game_path: PathBuf) -> iced::Result {
   Emerson::run(Settings {
     antialiasing: false,
+    flags: {
+      Flags {
+        game_path: game_path,
+      }
+    },
     window: window::Settings {
       size: (
         (palmer::display::SCREEN_WIDTH * 10) as u32,
@@ -69,7 +80,7 @@ pub fn run() -> iced::Result {
 impl Application for Emerson {
   type Message = Message;
   type Executor = executor::Default;
-  type Flags = ();
+  type Flags = Flags;
 
   fn scale_factor(&self) -> f64 {
     10.
@@ -79,10 +90,10 @@ impl Application for Emerson {
     Color::BLACK
   }
 
-  fn new(_flags: ()) -> (Self, Command<Message>) {
+  fn new(flags: Flags) -> (Self, Command<Message>) {
     let mut xipe = Chip8::new(Box::new(|| {}));
 
-    let mut file = File::open("snake.ch8").unwrap();
+    let mut file = File::open(flags.game_path).unwrap();
     let mut buffer = Vec::new();
 
     file.read_to_end(&mut buffer).unwrap();

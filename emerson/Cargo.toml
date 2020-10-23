@@ -11,3 +11,4 @@ iced = {git = "https://github.com/hecrj/iced", branch = "master", features = ["g
 iced_native = {git = "https://github.com/hecrj/iced", branch = "master"}
 palmer = {path = "../palmer"}
 tokio = {version = "0.2", features = ["blocking"]}
+native-dialog = {version = "0.4.3"}

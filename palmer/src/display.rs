@@ -31,12 +31,16 @@ impl Display {
     get_pixel(self.pixels, x, y)
   }
 
-  fn xor_pixel(&mut self, x: usize, y: usize, new_value: bool) {
+  fn xor_pixel(&mut self, x: usize, y: usize, new_value: bool) -> bool {
     let current = self.get_pixel(x, y);
-    self.set_pixel(x, y, current ^ new_value);
+    let new_pixel = current ^ new_value;
+    self.set_pixel(x, y, new_pixel);
+    current && !new_pixel
   }
 
-  pub fn draw(&mut self, x: usize, y: usize, sprite: &[u8]) {
+  pub fn draw(&mut self, x: usize, y: usize, sprite: &[u8]) -> u8 {
+    let mut new_vf = 0;
+
     sprite.iter().enumerate().for_each(|(line_number, line)| {
       if line_number + y < SCREEN_HEIGHT {
         format!("{:08b}", line)
@@ -45,11 +49,15 @@ impl Display {
           .enumerate()
           .for_each(|(column_number, pixel)| {
             if column_number + x < SCREEN_WIDTH {
-              self.xor_pixel(x + column_number, y + line_number, pixel);
+              if self.xor_pixel(x + column_number, y + line_number, pixel) {
+                new_vf = 1;
+              }
             }
           });
       }
     });
+
+    new_vf
   }
 }
 
