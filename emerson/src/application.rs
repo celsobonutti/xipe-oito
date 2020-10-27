@@ -15,35 +15,13 @@ use std::io::prelude::*;
 use std::time::{Duration, Instant};
 
 mod grid;
+mod audio;
 
 use grid::Grid;
-
-struct TAD {
-  pub is_playing: bool
-}
-
-impl AudioDriver for TAD {
-  fn new() -> Self {
-      Self {
-        is_playing: false
-      }
-  }
-
-  fn play_sound(&mut self) {
-      self.is_playing = true;
-      println!("Boop!");
-  }
-
-  fn pause_sound(&mut self) {
-      if self.is_playing {
-        println!("Turn off the sound!");
-      }
-      self.is_playing = false;
-  }
-}
+use audio::NativeAudioDriver;
 
 struct Emerson {
-  engine: palmer::Chip8<TAD>,
+  engine: palmer::Chip8<NativeAudioDriver>,
   display: grid::Grid,
   cartridge_loaded: bool,
 }
@@ -116,7 +94,7 @@ impl Application for Emerson {
   }
 
   fn new(flags: Flags) -> (Self, Command<Message>) {
-    let mut xipe = Chip8::new(TAD::new());
+    let mut xipe = Chip8::new(NativeAudioDriver::new());
 
     let mut file = File::open(flags.game_path).unwrap();
     let mut buffer = Vec::new();
