@@ -1,34 +1,51 @@
 use palmer::audio::AudioDriver;
-use rust_embed::RustEmbed;
-use rodio::Sink;
-
-#[derive(RustEmbed)]
-#[folder = "assets/"]
-struct Asset;
+use std::sync::mpsc::{self, Sender};
+use std::thread;
 
 pub struct NativeAudioDriver {
-  sink: Sink
+  sender: Sender<Message>,
+}
+
+enum Message {
+  Play,
+  Stop,
 }
 
 impl AudioDriver for NativeAudioDriver {
   fn new() -> Self {
-    let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
-    let sink = rodio::Sink::try_new(&stream_handle).unwrap();
+    let (tx, rx) = mpsc::channel::<Message>();
 
-    // Add a dummy source of the sake of the example.
-    let source = rodio::source::SineWave::new(440);
-    sink.append(source);
-    
-    NativeAudioDriver {
-      sink: sink
-    }
+    thread::spawn(move || {
+      let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
+      let sink = rodio::Sink::try_new(&stream_handle).unwrap();
+
+      let source = rodio::source::SineWave::new(440);
+      sink.append(source);
+      sink.pause();
+
+      for received in rx {
+        match received {
+          Message::Play => {
+            sink.play();
+            println!("Caralho marreco!");
+            thread::sleep(std::time::Duration::from_millis(200));
+            sink.pause();
+          },
+          Message::Stop => {
+            ()
+          },
+        }
+      }
+    });
+
+    Self { sender: tx }
   }
 
   fn play_sound(&mut self) {
-      self.sink.play()
+    self.sender.send(Message::Play).unwrap();
   }
 
   fn pause_sound(&mut self) {
-      self.sink.stop()
+    self.sender.send(Message::Stop).unwrap();
   }
 }
