@@ -27,7 +27,6 @@ impl AudioDriver for NativeAudioDriver {
         match received {
           Message::Play => {
             sink.play();
-            println!("Caralho marreco!");
             thread::sleep(std::time::Duration::from_millis(200));
             sink.pause();
           },
