@@ -3,10 +3,6 @@ pub const SCREEN_HEIGHT: usize = 32;
 
 pub type Pixels = [bool; SCREEN_WIDTH * SCREEN_HEIGHT];
 
-pub fn get_pixel(pixels: Pixels, x: usize, y: usize) -> bool {
-  pixels[x + y * SCREEN_WIDTH]
-}
-
 #[derive(Debug, Clone)]
 pub struct Display {
   pub pixels: Pixels,
@@ -28,7 +24,7 @@ impl Display {
   }
 
   fn get_pixel(&self, x: usize, y: usize) -> bool {
-    get_pixel(self.pixels, x, y)
+    self.pixels[x + y * SCREEN_WIDTH]
   }
 
   fn xor_pixel(&mut self, x: usize, y: usize, new_value: bool) -> bool {

@@ -2,7 +2,7 @@ use iced::{
   canvas::{self, Cache, Canvas, Cursor, Geometry},
   Color, Element, Point, Rectangle, Size,
 };
-use palmer::display::{get_pixel, Pixels, SCREEN_HEIGHT, SCREEN_WIDTH};
+use palmer::display::{Pixels, SCREEN_HEIGHT, SCREEN_WIDTH};
 
 pub struct Grid {
   display: Pixels,
@@ -49,21 +49,24 @@ impl<'a> canvas::Program<Message> for Grid {
   fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
     let pixels = self.display_cache.draw(bounds.size(), |frame| {
       frame.with_save(|frame| {
-        for x in 0..SCREEN_WIDTH {
-          for y in 0..SCREEN_HEIGHT {
-            let color = if get_pixel(self.display, x, y) {
-              Color::WHITE
-            } else {
-              Color::TRANSPARENT
-            };
+        self
+          .display
+          .chunks(SCREEN_WIDTH)
+          .enumerate()
+          .for_each(|(line, pixel_line)| {
+            pixel_line
+              .into_iter()
+              .enumerate()
+              .for_each(|(column, pixel)| {
+                let color = if *pixel {
+                  Color::WHITE
+                } else {
+                  Color::TRANSPARENT
+                };
 
-            frame.fill_rectangle(
-              Point::new(x as f32, y as f32),
-              Size::UNIT,
-              color,
-            )
-          }
-        }
+                frame.fill_rectangle(Point::new(column as f32, line as f32), Size::UNIT, color)
+              })
+          });
       });
     });
 
