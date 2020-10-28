@@ -7,18 +7,18 @@ use iced::{
   },
   window, Application, Color, Column, Command, Container, Element, Settings, Subscription,
 };
-use palmer::Chip8;
 use palmer::audio::AudioDriver;
-use std::path::PathBuf;
+use palmer::Chip8;
 use std::fs::File;
 use std::io::prelude::*;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-mod grid;
 mod audio;
+mod grid;
 
-use grid::Grid;
 use audio::NativeAudioDriver;
+use grid::Grid;
 
 struct Emerson {
   engine: palmer::Chip8<NativeAudioDriver>,
@@ -120,11 +120,20 @@ impl Application for Emerson {
   fn update(&mut self, message: Message) -> Command<Message> {
     match message {
       Message::Tick(_) => {
-        self.engine.emulate_cycle();
-        if self.engine.should_draw() {
-          self
-            .display
-            .update(grid::Message::Show(self.engine.display.pixels));
+        let mut closure = || {
+          self.engine.emulate_cycle();
+          if self.engine.should_draw() {
+            self
+              .display
+              .update(grid::Message::Show(self.engine.display.pixels));
+          }
+        };
+        if cfg!(target_os = "windows") {
+          for _ in 0..5 {
+            closure();
+          }
+        } else {
+          closure();
         }
       }
       Message::Display(_) => (),
@@ -156,9 +165,11 @@ impl Application for Emerson {
   }
 
   fn subscription(&self) -> Subscription<Self::Message> {
+    let time = if cfg!(target_os = "windows") { 10 } else { 2 };
+
     if self.cartridge_loaded {
       Subscription::batch(vec![
-        time::every(Duration::from_millis(2 as u64)).map(Message::Tick),
+        time::every(Duration::from_millis(time as u64)).map(Message::Tick),
         iced_native::subscription::events().map(Message::Event),
       ])
     } else {
