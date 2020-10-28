@@ -1,14 +1,23 @@
 use byteorder::{BigEndian, ReadBytesExt};
-use rand::Rng;
 
+use super::audio::AudioDriver;
 use super::display::Display;
 use super::fontset::FONTSET;
 use super::input::Input;
 use super::instructions::{self, Instruction, RegisterValuePair, TargetSourcePair};
-use super::audio::AudioDriver;
 
 const MEMORY_SIZE: usize = 4096;
 const OP_SIZE: u16 = 2;
+
+#[cfg(target_arch = "wasm32")]
+fn get_random() -> u8 {
+  unsafe { js_sys::Math::floor(js_sys::Math::random() * 255.) as u8 }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn get_random() -> u8 {
+  rand::random()
+}
 
 enum ProgramCounter {
   Next,
@@ -24,7 +33,7 @@ fn skip_if(condition: bool) -> ProgramCounter {
   }
 }
 
-pub struct Chip8<T: AudioDriver > {
+pub struct Chip8<T: AudioDriver> {
   pub display: Display,
   pub input: Input,
   memory: [u8; MEMORY_SIZE],
@@ -37,7 +46,7 @@ pub struct Chip8<T: AudioDriver > {
   stack_pointer: usize,
   waiting_for_key: Option<u8>,
   audio_driver: T,
-  should_draw: bool
+  should_draw: bool,
 }
 
 impl<T: AudioDriver> Chip8<T> {
@@ -61,7 +70,7 @@ impl<T: AudioDriver> Chip8<T> {
       input: Input::new(),
       waiting_for_key: None,
       should_draw: false,
-      audio_driver
+      audio_driver,
     }
   }
 
@@ -72,7 +81,7 @@ impl<T: AudioDriver> Chip8<T> {
   }
 
   pub fn reset(&mut self) {
-    for index in 512..=MEMORY_SIZE {
+    for index in 512..MEMORY_SIZE {
       self.memory[index] = 0;
     }
 
@@ -231,8 +240,7 @@ impl<T: AudioDriver> Chip8<T> {
       }
       Instruction::GoToNPlusV0(addr) => ProgramCounter::Jump(addr + self.get_register(0x0) as u16),
       Instruction::Random(RegisterValuePair { register, value }) => {
-        let mut rng = rand::thread_rng();
-        let rnd: u8 = rng.gen();
+        let rnd: u8 = get_random();
         self.set_register(register, rnd & value);
         ProgramCounter::Next
       }
@@ -333,19 +341,12 @@ impl<T: AudioDriver> Chip8<T> {
       };
 
       match self.sound_timer {
-        0 => {
-          self.audio_driver.pause_sound();
-        }
+        0 => {}
         1 => {
           self.audio_driver.play_sound();
           self.sound_timer -= 1
-        },
-        _ => {
-          {
-            self.audio_driver.pause_sound();
-            self.sound_timer -= 1
-          }
-        },
+        }
+        _ => self.sound_timer -= 1,
       }
     }
   }
@@ -354,22 +355,16 @@ impl<T: AudioDriver> Chip8<T> {
 #[cfg(test)]
 mod tests {
   struct TAD {
-    pub is_playing: bool
+    pub is_playing: bool,
   }
 
   impl AudioDriver for TAD {
     fn new() -> Self {
-        Self {
-          is_playing: false
-        }
+      Self { is_playing: false }
     }
 
     fn play_sound(&mut self) {
-        self.is_playing = true;
-    }
-
-    fn pause_sound(&mut self) {
-        self.is_playing = false;
+      self.is_playing = true;
     }
   }
 
@@ -382,10 +377,14 @@ mod tests {
   }
 
   #[test]
-  fn load_cartridge() {
+  fn load_cartridge_and_reset() {
     let mut chip8 = Chip8::new(TAD::new());
     chip8.load(vec![0xFF, 0xF1, 0x01, 0x22]);
     assert_eq!(chip8.memory[512..=515], [0xFF, 0xF1, 0x01, 0x22]);
+    chip8.reset();
+    for index in 512..MEMORY_SIZE {
+      assert_eq!(chip8.get_memory(index as u16), 0);
+    }
   }
 
   #[test]
@@ -454,20 +453,13 @@ mod tests {
     let mut chip8 = Chip8::new(TAD::new());
 
     let instructions = vec![
-      0xA5, 0x00,
-      0x60, 0x05,
-      0xF0, 0x1E,
-      0x60, 0x03,
-      0xF0, 0x29,
-      0xA5, 0x00,
-      0x60, 218,
-      0xF0, 0x33
+      0xA5, 0x00, 0x60, 0x05, 0xF0, 0x1E, 0x60, 0x03, 0xF0, 0x29, 0xA5, 0x00, 0x60, 218, 0xF0, 0x33,
     ];
 
     chip8.load(instructions);
 
     assert_eq!(chip8.index, 0x0);
-    
+
     chip8.emulate_cycle();
 
     assert_eq!(chip8.index, 0x500);
@@ -481,7 +473,7 @@ mod tests {
     assert_eq!(chip8.index, 15);
 
     emulate_cycles(&mut chip8, 3);
-    
+
     assert_eq!(chip8.get_memory(chip8.index), 2);
     assert_eq!(chip8.get_memory(chip8.index + 1), 1);
     assert_eq!(chip8.get_memory(chip8.index + 2), 8);
@@ -492,22 +484,9 @@ mod tests {
     let mut chip8 = Chip8::new(TAD::new());
 
     let instructions = vec![
-      0xA4, 0x00,
-      0x60, 0xF0,
-      0x61, 0xDD,
-      0x62, 0x1E,
-      0x63, 0x17,
-      0x64, 0x4D,
-      0x65, 0x29,
-      0xF5, 0x55,
-      0x60, 0x00,
-      0x61, 0x00,
-      0x62, 0x00,
-      0x63, 0x00,
-      0x64, 0x00,
-      0x65, 0x00,
-      0xA4, 0x00,
-      0xF5, 0x65
+      0xA4, 0x00, 0x60, 0xF0, 0x61, 0xDD, 0x62, 0x1E, 0x63, 0x17, 0x64, 0x4D, 0x65, 0x29, 0xF5,
+      0x55, 0x60, 0x00, 0x61, 0x00, 0x62, 0x00, 0x63, 0x00, 0x64, 0x00, 0x65, 0x00, 0xA4, 0x00,
+      0xF5, 0x65,
     ];
 
     chip8.load(instructions);
@@ -523,7 +502,10 @@ mod tests {
     assert_eq!(chip8.index, 0x406);
 
     for index in 0..=5 {
-      assert_eq!(chip8.get_register(index), chip8.get_memory(0x400 + index as u16));
+      assert_eq!(
+        chip8.get_register(index),
+        chip8.get_memory(0x400 + index as u16)
+      );
     }
 
     emulate_cycles(&mut chip8, 6);
@@ -535,7 +517,10 @@ mod tests {
     emulate_cycles(&mut chip8, 2);
 
     for index in 0..=5 {
-      assert_eq!(chip8.get_register(index), chip8.get_memory(0x400 + index as u16));
+      assert_eq!(
+        chip8.get_register(index),
+        chip8.get_memory(0x400 + index as u16)
+      );
     }
   }
 
@@ -543,11 +528,7 @@ mod tests {
   fn timers() {
     let mut chip8 = Chip8::new(TAD::new());
 
-    let instructions = vec![
-      0x60, 0x02,
-      0xF0, 0x15,
-      0xF0, 0x18
-    ];
+    let instructions = vec![0x60, 0x02, 0xF0, 0x15, 0xF0, 0x18];
 
     chip8.load(instructions);
 

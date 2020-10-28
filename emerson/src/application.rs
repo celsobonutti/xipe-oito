@@ -26,7 +26,7 @@ struct Emerson {
   cartridge_loaded: bool,
 }
 
-fn get_key(key: KeyCode) -> Option<usize> {
+fn parse_key(key: KeyCode) -> Option<usize> {
   match key {
     KeyCode::Key1 => Some(0x1),
     KeyCode::Key2 => Some(0x2),
@@ -134,7 +134,7 @@ impl Application for Emerson {
             key_code,
             modifiers: _,
           } => {
-            if let Some(key) = get_key(key_code) {
+            if let Some(key) = parse_key(key_code) {
               self.engine.input.key_down(key)
             }
           }
@@ -142,7 +142,7 @@ impl Application for Emerson {
             key_code,
             modifiers: _,
           } => {
-            if let Some(key) = get_key(key_code) {
+            if let Some(key) = parse_key(key_code) {
               self.engine.input.key_up(key)
             }
           }

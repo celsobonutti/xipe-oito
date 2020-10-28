@@ -8,7 +8,6 @@ pub struct NativeAudioDriver {
 
 enum Message {
   Play,
-  Stop,
 }
 
 impl AudioDriver for NativeAudioDriver {
@@ -29,10 +28,7 @@ impl AudioDriver for NativeAudioDriver {
             sink.play();
             thread::sleep(std::time::Duration::from_millis(200));
             sink.pause();
-          },
-          Message::Stop => {
-            ()
-          },
+          }
         }
       }
     });
@@ -42,9 +38,5 @@ impl AudioDriver for NativeAudioDriver {
 
   fn play_sound(&mut self) {
     self.sender.send(Message::Play).unwrap();
-  }
-
-  fn pause_sound(&mut self) {
-    self.sender.send(Message::Stop).unwrap();
   }
 }

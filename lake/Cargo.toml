@@ -1,0 +1,31 @@
+[package]
+name = "lake"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+yew = {version = "0.17"}
+palmer = {path = "../palmer"}
+js-sys = {version = "0.3.45"}
+wasm-bindgen = {version = "0.2.68"}
+
+[dependencies.web-sys]
+version = "0.3.4"
+features = [
+  'AudioContext',
+  'AudioDestinationNode',
+  'AudioNode',
+  'AudioParam',
+  'GainNode',
+  'OscillatorNode',
+  'OscillatorType',
+  'CanvasRenderingContext2d',
+  'Document',
+  'Element',
+  'FileReader',
+  'File',
+  'HtmlCanvasElement',
+  'KeyboardEvent',
+  'Window',
+]
+
