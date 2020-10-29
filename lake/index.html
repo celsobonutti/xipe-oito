@@ -24,8 +24,15 @@
       background-color: var(--background);
     }
 
-
     main {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+    }
+
+    .view {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       grid-template-areas:
@@ -33,21 +40,6 @@
         "load .";
       gap: 1rem;
       padding: 1rem;
-      margin: auto;
-      margin-top: 300px;
-    }
-
-    @media screen and (max-width: 992px) {
-      main {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-          "game"
-          "load"
-          "keypad";
-        padding: 10px;
-        margin-top: 100px;
-        max-width: 1300px;
-      }
     }
 
     .game__loader {
@@ -92,17 +84,19 @@
       outline: 1px dotted #000;
     }
 
+    .game__container {
+      grid-area: game;
+      position: relative;
+      max-width: 400px;
+      max-height: 200px;
+      margin: auto;
+    }
+
     .game__canvas {
       background-color: black;
-      width: 640px;
-      height: 320px;
-      display: grid;
-      grid-template-columns: repeat(64, 1fr);
-      margin: auto;
-      padding: 0;
-      grid-area: game;
       border: 3px solid var(--accent);
       border-radius: 3px;
+      margin: auto;
     }
 
     .pixel {
@@ -138,6 +132,39 @@
     .buttons__button--active {
       background-color: var(--accent);
       color: var(--button);
+    }
+
+    @media screen and (max-width: 992px) {
+      .view {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "load"
+          "game"
+          "keypad";
+        padding: 10px;
+        max-width: 1300px;
+      }
+
+      .buttons {
+        max-width: 100%;
+        margin-top: 1rem;
+        height: 600px;
+      }
+
+      .buttons__button {
+        height: 100%;
+        width: 100%;
+        font-size: 40px;
+      }
+
+      .game__container {
+        max-width: none;
+        max-height: none;
+        margin: none;
+      }
+
+      .game__canvas {
+      }
     }
   </style>
 </head>

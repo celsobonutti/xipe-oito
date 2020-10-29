@@ -134,31 +134,33 @@ impl Component for Lake {
 
     html! {
       <main>
-        <Grid should_render=should_draw pixels=pixels />
-        <div class="game__loader">
-        <input type="file" id="file" multiple=false onchange=self.link.callback(move |value| {
-          let mut result = Vec::new();
-          if let ChangeData::Files(files) = value {
-              let files = js_sys::try_iter(&files)
-                  .unwrap()
-                  .unwrap()
-                  .map(|v| File::from(v.unwrap()));
-              result.extend(files);
-          }
-          Message::Files(result)
-          })
-        />
-        <label for="file">{"LOAD GAME"}</label>
+        <div class="view">
+          <Grid should_render=should_draw pixels=pixels />
+          <div class="game__loader">
+            <input type="file" id="file" multiple=false onchange=self.link.callback(move |value| {
+              let mut result = Vec::new();
+              if let ChangeData::Files(files) = value {
+                  let files = js_sys::try_iter(&files)
+                      .unwrap()
+                      .unwrap()
+                      .map(|v| File::from(v.unwrap()));
+                  result.extend(files);
+              }
+              Message::Files(result)
+              })
+            />
+            <label for="file">{"LOAD GAME"}</label>
+          </div>
+          <Buttons
+            onkeydown=self.link.callback(|code| {
+              Message::KeyDownEvent(Some(code))
+            })
+            onkeyup=self.link.callback(|code| {
+              Message::KeyUpEvent(Some(code))
+            })
+            active_buttons=self.engine.input
+          />
         </div>
-        <Buttons
-          onkeydown=self.link.callback(|code| {
-            Message::KeyDownEvent(Some(code))
-          })
-          onkeyup=self.link.callback(|code| {
-            Message::KeyUpEvent(Some(code))
-          })
-          active_buttons=self.engine.input
-        />
       </main>
     }
   }
