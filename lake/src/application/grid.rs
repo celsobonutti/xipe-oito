@@ -5,7 +5,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{self, CanvasRenderingContext2d, HtmlCanvasElement};
 use yew::{html, Component, ComponentLink, Html, NodeRef, Properties, ShouldRender};
 
-#[derive(Properties, Clone)]
+#[derive(Properties, Clone, PartialEq)]
 pub struct Props {
   pub pixels: Pixels,
   pub should_render: bool,
@@ -16,10 +16,8 @@ pub struct Grid {
   canvas_context: Option<CanvasRenderingContext2d>,
 }
 
-pub enum Message {}
-
 impl Component for Grid {
-  type Message = Message;
+  type Message = ();
   type Properties = Props;
 
   fn create(_props: Self::Properties, _link: ComponentLink<Self>) -> Self {

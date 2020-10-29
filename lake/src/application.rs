@@ -1,17 +1,19 @@
+use palmer::audio::AudioDriver;
 use palmer::Chip8;
 use std::time::Duration;
 use yew::prelude::*;
 use yew::services::interval::{IntervalService, IntervalTask};
-use yew::services::reader::{File, FileData, ReaderService, ReaderTask};
 use yew::services::keyboard::*;
+use yew::services::reader::{File, FileData, ReaderService, ReaderTask};
 use yew::ChangeData;
-use palmer::audio::AudioDriver;
 
-pub mod audio;
-pub mod grid;
+mod audio;
+mod grid;
+mod button;
 
-use grid::Grid;
 use audio::WebAudioDriver;
+use grid::Grid;
+use button::Button;
 
 pub struct Lake {
   link: ComponentLink<Lake>,
@@ -20,7 +22,7 @@ pub struct Lake {
   is_running: bool,
   _task: IntervalTask,
   _key_up_listener: KeyListenerHandle,
-  _key_down_listener: KeyListenerHandle
+  _key_down_listener: KeyListenerHandle,
 }
 
 fn parse_key(key: &str) -> Option<usize> {
@@ -50,7 +52,7 @@ pub enum Message {
   FileLoaded(FileData),
   Tick,
   KeyDownEvent(KeyboardEvent),
-  KeyUpEvent(KeyboardEvent)
+  KeyUpEvent(KeyboardEvent),
 }
 
 impl Component for Lake {
@@ -58,10 +60,14 @@ impl Component for Lake {
   type Properties = ();
 
   fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
-    let callback = link.callback(|_| Message::Tick);
-    let task = IntervalService::spawn(Duration::from_millis(2), callback);
-    let key_down_listener = KeyboardService::register_key_down(&web_sys::window().unwrap(), (&link).callback(|e: KeyboardEvent| Message::KeyDownEvent(e)));
-    let key_up_listener = KeyboardService::register_key_up(&web_sys::window().unwrap(), (&link).callback(|e: KeyboardEvent| Message::KeyUpEvent(e)));
+    let tick_callback = link.callback(|_| Message::Tick);
+    let key_down_callback = link.callback(|e: KeyboardEvent| Message::KeyDownEvent(e));
+    let key_up_callback = link.callback(|e: KeyboardEvent| Message::KeyUpEvent(e));
+
+    let wnd = &web_sys::window().unwrap();
+    let task = IntervalService::spawn(Duration::from_millis(2), tick_callback);
+    let key_down_listener = KeyboardService::register_key_down(wnd, key_down_callback);
+    let key_up_listener = KeyboardService::register_key_up(wnd, key_up_callback);
 
     let engine = Chip8::new(WebAudioDriver::new());
     Self {
@@ -71,7 +77,7 @@ impl Component for Lake {
       is_running: false,
       _task: task,
       _key_down_listener: key_down_listener,
-      _key_up_listener: key_up_listener
+      _key_up_listener: key_up_listener,
     }
   }
 
@@ -113,10 +119,6 @@ impl Component for Lake {
     false
   }
 
-  fn rendered(&mut self, _first_render: bool) {
-      
-  }
-
   fn view(&self) -> Html {
     let should_draw = self.engine.should_draw();
     let pixels = self.engine.display.pixels;
@@ -137,6 +139,7 @@ impl Component for Lake {
           })
          />
         <Grid should_render=should_draw pixels=pixels />
+        <Button text="Memes" />
       </main>
     }
   }
