@@ -1,7 +1,145 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Chip 8 Emulator</title>
-  </head>
+
+<head>
+  <meta charset="utf-8" />
+  <title>Chip 8 Emulator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Turret+Road:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --background: #fec7d7;
+      --title: #0e172c;
+      --button: #0e172c;
+      --button-text: #fffffe;
+      --accent: #a786df;
+    }
+
+    * {
+      font-family: 'Turret Road', cursive !important;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background-color: var(--background);
+    }
+
+
+    main {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-areas:
+        "game keypad"
+        "load .";
+      gap: 1rem;
+      padding: 1rem;
+      margin: auto;
+      margin-top: 300px;
+    }
+
+    @media screen and (max-width: 992px) {
+      main {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "game"
+          "load"
+          "keypad";
+        padding: 10px;
+        margin-top: 100px;
+        max-width: 1300px;
+      }
+    }
+
+    .game__loader {
+      display: flex;
+      justify-content: center;
+      grid-area: load;
+    }
+
+    [type="file"] {
+      border: 0;
+      clip: rect(0, 0, 0, 0);
+      height: 1px;
+      overflow: hidden;
+      padding: 0;
+      position: absolute !important;
+      white-space: nowrap;
+      width: 1px;
+    }
+
+    [type="file"]+label {
+      border: none;
+      background: var(--button);
+      color: #ffffff !important;
+      font-weight: 100;
+      padding: 20px;
+      text-transform: uppercase;
+      border-radius: 6px;
+      display: inline-block;
+      transition: all 0.3s ease 0s;
+    }
+
+    [type="file"]:focus+label,
+    [type="file"]+label:hover {
+      font-weight: 700 !important;
+      letter-spacing: 3px;
+      -webkit-box-shadow: 0px 5px 40px -10px rgba(0, 0, 0, 0.57);
+      -moz-box-shadow: 0px 5px 40px -10px rgba(0, 0, 0, 0.57);
+      transition: all 0.3s ease 0s;
+    }
+
+    [type="file"]:focus+label {
+      outline: 1px dotted #000;
+    }
+
+    .game__canvas {
+      background-color: black;
+      width: 640px;
+      height: 320px;
+      display: grid;
+      grid-template-columns: repeat(64, 1fr);
+      margin: auto;
+      padding: 0;
+      grid-area: game;
+      border: 3px solid var(--accent);
+      border-radius: 3px;
+    }
+
+    .pixel {
+      width: 10px;
+      height: 10px;
+    }
+
+    .pixel--white {
+      background-color: white;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      max-width: 400px;
+      max-height: 400px;
+      grid-area: keypad;
+      width: 100%;
+      margin: auto;
+    }
+
+    .buttons__button {
+      outline: none !important;
+      background-color: var(--button);
+      color: var(--button-text);
+      border: 3px solid var(--accent);
+      border-radius: 10px;
+      padding: 1rem;
+      font-size: 20px;
+    }
+
+    .buttons__button--active {
+      background-color: var(--accent);
+      color: var(--button);
+    }
+  </style>
+</head>
+
 </html>

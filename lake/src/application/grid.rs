@@ -5,7 +5,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{self, CanvasRenderingContext2d, HtmlCanvasElement};
 use yew::{html, Component, ComponentLink, Html, NodeRef, Properties, ShouldRender};
 
-#[derive(Properties, Clone, PartialEq)]
+#[derive(Properties, Clone)]
 pub struct Props {
   pub pixels: Pixels,
   pub should_render: bool,
@@ -74,7 +74,7 @@ impl Component for Grid {
 
   fn view(&self) -> Html {
     html! {
-      <canvas ref=self.node_ref.clone() width=640 height=320 />
+      <canvas class="game__canvas" ref=self.node_ref.clone() width=640 height=320 />
     }
   }
 }

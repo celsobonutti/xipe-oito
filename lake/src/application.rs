@@ -1,4 +1,5 @@
 use palmer::audio::AudioDriver;
+use palmer::input::Button;
 use palmer::Chip8;
 use std::time::Duration;
 use yew::prelude::*;
@@ -8,12 +9,13 @@ use yew::services::reader::{File, FileData, ReaderService, ReaderTask};
 use yew::ChangeData;
 
 mod audio;
-mod grid;
 mod button;
+mod buttons;
+mod grid;
 
 use audio::WebAudioDriver;
+use buttons::Buttons;
 use grid::Grid;
-use button::Button;
 
 pub struct Lake {
   link: ComponentLink<Lake>,
@@ -25,24 +27,24 @@ pub struct Lake {
   _key_down_listener: KeyListenerHandle,
 }
 
-fn parse_key(key: &str) -> Option<usize> {
+fn parse_key(key: &str) -> Option<Button> {
   match key {
-    "Digit1" => Some(0x1),
-    "Digit2" => Some(0x2),
-    "Digit3" => Some(0x3),
-    "Digit4" => Some(0xC),
-    "KeyQ" => Some(0x4),
-    "KeyW" => Some(0x5),
-    "KeyE" => Some(0x6),
-    "KeyR" => Some(0xD),
-    "KeyA" => Some(0x7),
-    "KeyS" => Some(0x8),
-    "KeyD" => Some(0x9),
-    "KeyF" => Some(0xE),
-    "KeyZ" => Some(0xA),
-    "KeyX" => Some(0x0),
-    "KeyC" => Some(0xB),
-    "KeyV" => Some(0xF),
+    "Digit1" => Some(Button::One),
+    "Digit2" => Some(Button::Two),
+    "Digit3" => Some(Button::Three),
+    "Digit4" => Some(Button::C),
+    "KeyQ" => Some(Button::Four),
+    "KeyW" => Some(Button::Five),
+    "KeyE" => Some(Button::Six),
+    "KeyR" => Some(Button::D),
+    "KeyA" => Some(Button::Seven),
+    "KeyS" => Some(Button::Eight),
+    "KeyD" => Some(Button::Nine),
+    "KeyF" => Some(Button::E),
+    "KeyZ" => Some(Button::A),
+    "KeyX" => Some(Button::Zero),
+    "KeyC" => Some(Button::B),
+    "KeyV" => Some(Button::F),
     _ => None,
   }
 }
@@ -51,8 +53,8 @@ pub enum Message {
   Files(Vec<File>),
   FileLoaded(FileData),
   Tick,
-  KeyDownEvent(KeyboardEvent),
-  KeyUpEvent(KeyboardEvent),
+  KeyDownEvent(Option<Button>),
+  KeyUpEvent(Option<Button>),
 }
 
 impl Component for Lake {
@@ -61,8 +63,15 @@ impl Component for Lake {
 
   fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
     let tick_callback = link.callback(|_| Message::Tick);
-    let key_down_callback = link.callback(|e: KeyboardEvent| Message::KeyDownEvent(e));
-    let key_up_callback = link.callback(|e: KeyboardEvent| Message::KeyUpEvent(e));
+
+    let key_down_callback = link.callback(|e: KeyboardEvent| {
+      let key = parse_key(&e.code());
+      Message::KeyDownEvent(key)
+    });
+    let key_up_callback = link.callback(|e: KeyboardEvent| {
+      let key = parse_key(&e.code());
+      Message::KeyUpEvent(key)
+    });
 
     let wnd = &web_sys::window().unwrap();
     let task = IntervalService::spawn(Duration::from_millis(2), tick_callback);
@@ -100,13 +109,13 @@ impl Component for Lake {
           self.engine.emulate_cycle();
         }
       }
-      Message::KeyDownEvent(keyboard_event) => {
-        if let Some(key) = parse_key(keyboard_event.code().as_str()) {
+      Message::KeyDownEvent(input) => {
+        if let Some(key) = input {
           self.engine.input.key_down(key)
         }
       }
-      Message::KeyUpEvent(keyboard_event) => {
-        if let Some(key) = parse_key(keyboard_event.code().as_str()) {
+      Message::KeyUpEvent(input) => {
+        if let Some(key) = input {
           self.engine.input.key_up(key)
         }
       }
@@ -125,8 +134,9 @@ impl Component for Lake {
 
     html! {
       <main>
-        <h1 >{ "Chip8" }</h1>
-        <input type="file" multiple=false onchange=self.link.callback(move |value| {
+        <Grid should_render=should_draw pixels=pixels />
+        <div class="game__loader">
+        <input type="file" id="file" multiple=false onchange=self.link.callback(move |value| {
           let mut result = Vec::new();
           if let ChangeData::Files(files) = value {
               let files = js_sys::try_iter(&files)
@@ -137,9 +147,18 @@ impl Component for Lake {
           }
           Message::Files(result)
           })
-         />
-        <Grid should_render=should_draw pixels=pixels />
-        <Button text="Memes" />
+        />
+        <label for="file">{"LOAD GAME"}</label>
+        </div>
+        <Buttons
+          onkeydown=self.link.callback(|code| {
+            Message::KeyDownEvent(Some(code))
+          })
+          onkeyup=self.link.callback(|code| {
+            Message::KeyUpEvent(Some(code))
+          })
+          active_buttons=self.engine.input
+        />
       </main>
     }
   }
