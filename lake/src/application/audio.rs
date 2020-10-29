@@ -1,5 +1,5 @@
 use wasm_bindgen::{closure::Closure, JsCast};
-use web_sys::{AudioContext, OscillatorNode};
+use web_sys::{AudioContext};
 use yew::utils::window;
 
 pub struct WebAudioDriver {}

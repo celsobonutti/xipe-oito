@@ -3,7 +3,7 @@ use std::time::Duration;
 use yew::prelude::*;
 use yew::services::interval::{IntervalService, IntervalTask};
 use yew::services::reader::{File, FileData, ReaderService, ReaderTask};
-use yew::services::{ConsoleService, keyboard::*};
+use yew::services::keyboard::*;
 use yew::ChangeData;
 use palmer::audio::AudioDriver;
 
