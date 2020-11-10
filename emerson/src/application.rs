@@ -8,6 +8,7 @@ use iced::{
   window, Application, Color, Column, Command, Container, Element, Settings, Subscription,
 };
 use palmer::audio::AudioDriver;
+use palmer::input::Button;
 use palmer::Chip8;
 use std::fs::File;
 use std::io::prelude::*;
@@ -26,24 +27,24 @@ struct Emerson {
   cartridge_loaded: bool,
 }
 
-fn parse_key(key: KeyCode) -> Option<usize> {
+fn parse_key(key: KeyCode) -> Option<Button> {
   match key {
-    KeyCode::Key1 => Some(0x1),
-    KeyCode::Key2 => Some(0x2),
-    KeyCode::Key3 => Some(0x3),
-    KeyCode::Key4 => Some(0xC),
-    KeyCode::Q => Some(0x4),
-    KeyCode::W => Some(0x5),
-    KeyCode::E => Some(0x6),
-    KeyCode::R => Some(0xD),
-    KeyCode::A => Some(0x7),
-    KeyCode::S => Some(0x8),
-    KeyCode::D => Some(0x9),
-    KeyCode::F => Some(0xE),
-    KeyCode::Z => Some(0xA),
-    KeyCode::X => Some(0x0),
-    KeyCode::C => Some(0xB),
-    KeyCode::V => Some(0xF),
+    KeyCode::Key1 => Some(Button::One),
+    KeyCode::Key2 => Some(Button::Two),
+    KeyCode::Key3 => Some(Button::Three),
+    KeyCode::Key4 => Some(Button::C),
+    KeyCode::Q => Some(Button::Four),
+    KeyCode::W => Some(Button::Five),
+    KeyCode::E => Some(Button::Six),
+    KeyCode::R => Some(Button::D),
+    KeyCode::A => Some(Button::Seven),
+    KeyCode::S => Some(Button::Eight),
+    KeyCode::D => Some(Button::Nine),
+    KeyCode::F => Some(Button::E),
+    KeyCode::Z => Some(Button::A),
+    KeyCode::X => Some(Button::Zero),
+    KeyCode::C => Some(Button::B),
+    KeyCode::V => Some(Button::F),
     _ => None,
   }
 }

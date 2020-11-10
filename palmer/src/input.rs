@@ -108,15 +108,15 @@ mod tests {
   #[test]
   fn key_down() {
     let mut input = Input::new();
-    input.key_down(5);
+    input.key_down(Button::Five);
     assert!(input.is_pressed(5));
   }
 
   #[test]
   fn key_up() {
     let mut input = Input::new();
-    input.key_down(7);
-    input.key_up(7);
+    input.key_down(Button::Seven);
+    input.key_up(Button::Seven);
     assert!(!input.is_pressed(7))
   }
 }
