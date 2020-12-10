@@ -1,3 +1,6 @@
+dev: trunk
+	trunk serve
+
 build: trunk
 	trunk build
 
