@@ -7,7 +7,7 @@ edition = "2018"
 yew = {version = "0.17"}
 palmer = {path = "../palmer"}
 js-sys = {version = "0.3.45"}
-wasm-bindgen = {version = "0.2.68"}
+wasm-bindgen = {version = "0.2.69"}
 
 [dependencies.web-sys]
 version = "0.3.4"
