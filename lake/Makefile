@@ -2,7 +2,7 @@ build: trunk
 	trunk build
 
 trunk: rustup
-	cargo install trunk wasm-bindgen-cli
+	cargo install trunk
 
 rustup:
 	rustup default stable
