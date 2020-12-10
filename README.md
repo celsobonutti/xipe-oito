@@ -21,5 +21,9 @@ This is the library responsible for the Chip 8 engine. This is the only library 
 I would love to add more tests.
 There is no program here, but you can run the tests with `make test`.
 
+
+![Keybinding map, showing how to play the games on your computer's keyboard](https://raw.githubusercontent.com/celsobonutti/xipe-oito/master/map.png)
+This is a simple image showing how the Chip8's keyboard is mapped to your computer's.
+
 If you read it all through here, thank you a lot! This is one of the projects I'm the proudest about. If you have any doubt or tip, feel free to reach me - you can find my information 
 on my GitHub profile.
