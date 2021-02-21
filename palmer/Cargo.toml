@@ -3,6 +3,8 @@ name = "palmer"
 version = "0.1.0"
 authors = ["Celso Bonutti Filho <celso.bonuttif@gmail.com>"]
 edition = "2018"
+description = "Chip8 engine written for a personal project"
+license = "MIT"
 
 [dependencies]
 byteorder = "1"
