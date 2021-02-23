@@ -1,7 +1,4 @@
 macro_rules! hex_group_to_integer {
-  ( $nibble1:expr ) => {
-    $nibble1 as u8
-  };
   ( $nibble1:expr, $nibble2:expr ) => {{
     (($nibble1 << 4) as u8) | $nibble2
   }};
@@ -68,16 +65,13 @@ pub enum Instruction {
   InvalidInstruction,
 }
 
-fn as_ts_pair(x: u8, y: u8) -> TargetSourcePair {
-  TargetSourcePair {
-    target: hex_group_to_integer!(x),
-    source: hex_group_to_integer!(y),
-  }
+fn as_ts_pair(target: u8, source: u8) -> TargetSourcePair {
+  TargetSourcePair { target, source }
 }
 
 fn as_rv_pair(register: u8, c1: u8, c2: u8) -> RegisterValuePair {
   RegisterValuePair {
-    register: hex_group_to_integer!(register),
+    register,
     value: hex_group_to_integer!(c1, c2),
   }
 }
@@ -110,29 +104,25 @@ pub fn decode(op_code: u16) -> Instruction {
     [0x8, x, y, 0x3] => Instruction::SetXXorY(as_ts_pair(x, y)),
     [0x8, x, y, 0x4] => Instruction::AddYToX(as_ts_pair(x, y)),
     [0x8, x, y, 0x5] => Instruction::SubYFromX(as_ts_pair(x, y)),
-    [0x8, x, _, 0x6] => Instruction::ShiftRight(hex_group_to_integer!(x)),
+    [0x8, x, _, 0x6] => Instruction::ShiftRight(x),
     [0x8, x, y, 0x7] => Instruction::SetXAsYMinusX(as_ts_pair(x, y)),
-    [0x8, x, _, 0xE] => Instruction::ShiftLeft(hex_group_to_integer!(x)),
+    [0x8, x, _, 0xE] => Instruction::ShiftLeft(x),
     [0x9, x, y, 0x0] => Instruction::SkipIfRegisterDifferent(as_ts_pair(x, y)),
     [0xA, c1, c2, c3] => Instruction::SetIAs(hex_group_to_integer!(c1, c2, c3)),
     [0xB, c1, c2, c3] => Instruction::GoToNPlusV0(hex_group_to_integer!(c1, c2, c3)),
     [0xC, register, c1, c2] => Instruction::Random(as_rv_pair(register, c1, c2)),
-    [0xD, x, y, height] => Instruction::Draw {
-      x: hex_group_to_integer!(x),
-      y: hex_group_to_integer!(y),
-      height: hex_group_to_integer!(height),
-    },
-    [0xE, x, 0x9, 0xE] => Instruction::SkipIfKeyPressed(hex_group_to_integer!(x)),
-    [0xE, x, 0xA, 0x1] => Instruction::SkipIfKeyNotPressed(hex_group_to_integer!(x)),
-    [0xF, x, 0x0, 0x7] => Instruction::SetXAsDelay(hex_group_to_integer!(x)),
-    [0xF, x, 0x0, 0xA] => Instruction::WaitForInputAndStoreIn(hex_group_to_integer!(x)),
-    [0xF, x, 0x1, 0x5] => Instruction::SetDelayAsX(hex_group_to_integer!(x)),
-    [0xF, x, 0x1, 0x8] => Instruction::SetSoundAsX(hex_group_to_integer!(x)),
-    [0xF, x, 0x1, 0xE] => Instruction::AddXToI(hex_group_to_integer!(x)),
-    [0xF, x, 0x2, 0x9] => Instruction::SetIAsFontSprite(hex_group_to_integer!(x)),
-    [0xF, x, 0x3, 0x3] => Instruction::StoreBCD(hex_group_to_integer!(x)),
-    [0xF, x, 0x5, 0x5] => Instruction::DumpRegisters(hex_group_to_integer!(x)),
-    [0xF, x, 0x6, 0x5] => Instruction::LoadRegisters(hex_group_to_integer!(x)),
+    [0xD, x, y, height] => Instruction::Draw { x, y, height },
+    [0xE, x, 0x9, 0xE] => Instruction::SkipIfKeyPressed(x),
+    [0xE, x, 0xA, 0x1] => Instruction::SkipIfKeyNotPressed(x),
+    [0xF, x, 0x0, 0x7] => Instruction::SetXAsDelay(x),
+    [0xF, x, 0x0, 0xA] => Instruction::WaitForInputAndStoreIn(x),
+    [0xF, x, 0x1, 0x5] => Instruction::SetDelayAsX(x),
+    [0xF, x, 0x1, 0x8] => Instruction::SetSoundAsX(x),
+    [0xF, x, 0x1, 0xE] => Instruction::AddXToI(x),
+    [0xF, x, 0x2, 0x9] => Instruction::SetIAsFontSprite(x),
+    [0xF, x, 0x3, 0x3] => Instruction::StoreBCD(x),
+    [0xF, x, 0x5, 0x5] => Instruction::DumpRegisters(x),
+    [0xF, x, 0x6, 0x5] => Instruction::LoadRegisters(x),
     _ => Instruction::InvalidInstruction,
   }
 }
@@ -149,7 +139,6 @@ mod tests {
 
   #[test]
   fn group_macro_test() {
-    assert_eq!(0xA, hex_group_to_integer!(0xA));
     assert_eq!(0xAB, hex_group_to_integer!(0xA, 0xB));
     assert_eq!(0x17B, hex_group_to_integer!(0x1, 0x7, 0xB));
     assert_eq!(0xF0DA, hex_group_to_integer!(0xF, 0x0, 0xD, 0xA))
