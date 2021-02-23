@@ -1,17 +1,18 @@
-macro_rules! hex_char_to_integer {
-  ( $char1:expr ) => {
-    u8::from_str_radix(&$char1.to_string(), 16).unwrap()
+macro_rules! hex_group_to_integer {
+  ( $nibble1:expr ) => {
+    $nibble1 as u8
   };
-  ( $char1:expr, $char2:expr ) => {{
-    let string = format!("{}{}", $char1, $char2);
-    u8::from_str_radix(&string, 16).unwrap()
+  ( $nibble1:expr, $nibble2:expr ) => {{
+    (($nibble1 << 4) as u8) | $nibble2
   }};
-  ( $char1:expr, $char2:expr, $char3:expr, $char4:expr ) => {{
-    let string = format!("{}{}{}{}", $char1, $char2, $char3, $char4);
-    u16::from_str_radix(&string, 16).unwrap()
+  ( $nibble1:expr, $nibble2:expr, $nibble3:expr, $nibble4:expr ) => {{
+    (($nibble1 as u16) << 12)
+      | (($nibble2 as u16) << 8)
+      | (($nibble3 as u16) << 4)
+      | ($nibble4 as u16)
   }};
-  ( $char1:expr, $char2:expr, $char3:expr ) => {{
-    hex_char_to_integer!('0', $char1, $char2, $char3)
+  ( $nibble1:expr, $nibble2:expr, $nibble3:expr ) => {{
+    hex_group_to_integer!(0x0, $nibble1, $nibble2, $nibble3)
   }};
 }
 
@@ -67,65 +68,71 @@ pub enum Instruction {
   InvalidInstruction,
 }
 
-fn as_ts_pair(x: char, y: char) -> TargetSourcePair {
+fn as_ts_pair(x: u8, y: u8) -> TargetSourcePair {
   TargetSourcePair {
-    target: hex_char_to_integer!(x),
-    source: hex_char_to_integer!(y),
+    target: hex_group_to_integer!(x),
+    source: hex_group_to_integer!(y),
   }
 }
 
-fn as_rv_pair(register: char, c1: char, c2: char) -> RegisterValuePair {
+fn as_rv_pair(register: u8, c1: u8, c2: u8) -> RegisterValuePair {
   RegisterValuePair {
-    register: hex_char_to_integer!(register),
-    value: hex_char_to_integer!(c1, c2),
+    register: hex_group_to_integer!(register),
+    value: hex_group_to_integer!(c1, c2),
   }
+}
+
+fn as_nibble_array(op_code: u16) -> [u8; 4] {
+  let first_nibble = ((op_code >> 12) & 0xF) as u8;
+  let second_nibble = ((op_code >> 8) & 0xF) as u8;
+  let third_nibble = ((op_code >> 4) & 0xF) as u8;
+  let fourth_nibble = (op_code & 0xF) as u8;
+  [first_nibble, second_nibble, third_nibble, fourth_nibble]
 }
 
 pub fn decode(op_code: u16) -> Instruction {
-  let mut bits_array = [' '; 4];
-  let bits: Vec<char> = (format!("{:04X}", op_code)).chars().collect();
-  bits_array.copy_from_slice(&bits[..]);
+  let nibble_array = as_nibble_array(op_code);
 
-  match bits_array {
-    ['0', '0', 'E', '0'] => Instruction::ClearDisplay,
-    ['0', '0', 'E', 'E'] => Instruction::Return,
-    ['0', c1, c2, c3] => Instruction::CallMachineCode(hex_char_to_integer!(c1, c2, c3)),
-    ['1', c1, c2, c3] => Instruction::GoTo(hex_char_to_integer!(c1, c2, c3)),
-    ['2', c1, c2, c3] => Instruction::Call(hex_char_to_integer!(c1, c2, c3)),
-    ['3', register, c1, c2] => Instruction::SkipIfEqual(as_rv_pair(register, c1, c2)),
-    ['4', register, c1, c2] => Instruction::SkipIfDifferent(as_rv_pair(register, c1, c2)),
-    ['5', x, y, '0'] => Instruction::SkipIfRegisterEqual(as_ts_pair(x, y)),
-    ['6', register, c1, c2] => Instruction::AssignValueToRegister(as_rv_pair(register, c1, c2)),
-    ['7', register, c1, c2] => Instruction::AddValueToRegister(as_rv_pair(register, c1, c2)),
-    ['8', x, y, '0'] => Instruction::AssignVYToVX(as_ts_pair(x, y)),
-    ['8', x, y, '1'] => Instruction::SetXOrY(as_ts_pair(x, y)),
-    ['8', x, y, '2'] => Instruction::SetXAndY(as_ts_pair(x, y)),
-    ['8', x, y, '3'] => Instruction::SetXXorY(as_ts_pair(x, y)),
-    ['8', x, y, '4'] => Instruction::AddYToX(as_ts_pair(x, y)),
-    ['8', x, y, '5'] => Instruction::SubYFromX(as_ts_pair(x, y)),
-    ['8', x, _, '6'] => Instruction::ShiftRight(hex_char_to_integer!(x)),
-    ['8', x, y, '7'] => Instruction::SetXAsYMinusX(as_ts_pair(x, y)),
-    ['8', x, _, 'E'] => Instruction::ShiftLeft(hex_char_to_integer!(x)),
-    ['9', x, y, '0'] => Instruction::SkipIfRegisterDifferent(as_ts_pair(x, y)),
-    ['A', c1, c2, c3] => Instruction::SetIAs(hex_char_to_integer!(c1, c2, c3)),
-    ['B', c1, c2, c3] => Instruction::GoToNPlusV0(hex_char_to_integer!(c1, c2, c3)),
-    ['C', register, c1, c2] => Instruction::Random(as_rv_pair(register, c1, c2)),
-    ['D', x, y, height] => Instruction::Draw {
-      x: hex_char_to_integer!(x),
-      y: hex_char_to_integer!(y),
-      height: hex_char_to_integer!(height),
+  match nibble_array {
+    [0x0, 0x0, 0xE, 0x0] => Instruction::ClearDisplay,
+    [0x0, 0x0, 0xE, 0xE] => Instruction::Return,
+    [0x0, c1, c2, c3] => Instruction::CallMachineCode(hex_group_to_integer!(c1, c2, c3)),
+    [0x1, c1, c2, c3] => Instruction::GoTo(hex_group_to_integer!(c1, c2, c3)),
+    [0x2, c1, c2, c3] => Instruction::Call(hex_group_to_integer!(c1, c2, c3)),
+    [0x3, register, c1, c2] => Instruction::SkipIfEqual(as_rv_pair(register, c1, c2)),
+    [0x4, register, c1, c2] => Instruction::SkipIfDifferent(as_rv_pair(register, c1, c2)),
+    [0x5, x, y, 0x0] => Instruction::SkipIfRegisterEqual(as_ts_pair(x, y)),
+    [0x6, register, c1, c2] => Instruction::AssignValueToRegister(as_rv_pair(register, c1, c2)),
+    [0x7, register, c1, c2] => Instruction::AddValueToRegister(as_rv_pair(register, c1, c2)),
+    [0x8, x, y, 0x0] => Instruction::AssignVYToVX(as_ts_pair(x, y)),
+    [0x8, x, y, 0x1] => Instruction::SetXOrY(as_ts_pair(x, y)),
+    [0x8, x, y, 0x2] => Instruction::SetXAndY(as_ts_pair(x, y)),
+    [0x8, x, y, 0x3] => Instruction::SetXXorY(as_ts_pair(x, y)),
+    [0x8, x, y, 0x4] => Instruction::AddYToX(as_ts_pair(x, y)),
+    [0x8, x, y, 0x5] => Instruction::SubYFromX(as_ts_pair(x, y)),
+    [0x8, x, _, 0x6] => Instruction::ShiftRight(hex_group_to_integer!(x)),
+    [0x8, x, y, 0x7] => Instruction::SetXAsYMinusX(as_ts_pair(x, y)),
+    [0x8, x, _, 0xE] => Instruction::ShiftLeft(hex_group_to_integer!(x)),
+    [0x9, x, y, 0x0] => Instruction::SkipIfRegisterDifferent(as_ts_pair(x, y)),
+    [0xA, c1, c2, c3] => Instruction::SetIAs(hex_group_to_integer!(c1, c2, c3)),
+    [0xB, c1, c2, c3] => Instruction::GoToNPlusV0(hex_group_to_integer!(c1, c2, c3)),
+    [0xC, register, c1, c2] => Instruction::Random(as_rv_pair(register, c1, c2)),
+    [0xD, x, y, height] => Instruction::Draw {
+      x: hex_group_to_integer!(x),
+      y: hex_group_to_integer!(y),
+      height: hex_group_to_integer!(height),
     },
-    ['E', x, '9', 'E'] => Instruction::SkipIfKeyPressed(hex_char_to_integer!(x)),
-    ['E', x, 'A', '1'] => Instruction::SkipIfKeyNotPressed(hex_char_to_integer!(x)),
-    ['F', x, '0', '7'] => Instruction::SetXAsDelay(hex_char_to_integer!(x)),
-    ['F', x, '0', 'A'] => Instruction::WaitForInputAndStoreIn(hex_char_to_integer!(x)),
-    ['F', x, '1', '5'] => Instruction::SetDelayAsX(hex_char_to_integer!(x)),
-    ['F', x, '1', '8'] => Instruction::SetSoundAsX(hex_char_to_integer!(x)),
-    ['F', x, '1', 'E'] => Instruction::AddXToI(hex_char_to_integer!(x)),
-    ['F', x, '2', '9'] => Instruction::SetIAsFontSprite(hex_char_to_integer!(x)),
-    ['F', x, '3', '3'] => Instruction::StoreBCD(hex_char_to_integer!(x)),
-    ['F', x, '5', '5'] => Instruction::DumpRegisters(hex_char_to_integer!(x)),
-    ['F', x, '6', '5'] => Instruction::LoadRegisters(hex_char_to_integer!(x)),
+    [0xE, x, 0x9, 0xE] => Instruction::SkipIfKeyPressed(hex_group_to_integer!(x)),
+    [0xE, x, 0xA, 0x1] => Instruction::SkipIfKeyNotPressed(hex_group_to_integer!(x)),
+    [0xF, x, 0x0, 0x7] => Instruction::SetXAsDelay(hex_group_to_integer!(x)),
+    [0xF, x, 0x0, 0xA] => Instruction::WaitForInputAndStoreIn(hex_group_to_integer!(x)),
+    [0xF, x, 0x1, 0x5] => Instruction::SetDelayAsX(hex_group_to_integer!(x)),
+    [0xF, x, 0x1, 0x8] => Instruction::SetSoundAsX(hex_group_to_integer!(x)),
+    [0xF, x, 0x1, 0xE] => Instruction::AddXToI(hex_group_to_integer!(x)),
+    [0xF, x, 0x2, 0x9] => Instruction::SetIAsFontSprite(hex_group_to_integer!(x)),
+    [0xF, x, 0x3, 0x3] => Instruction::StoreBCD(hex_group_to_integer!(x)),
+    [0xF, x, 0x5, 0x5] => Instruction::DumpRegisters(hex_group_to_integer!(x)),
+    [0xF, x, 0x6, 0x5] => Instruction::LoadRegisters(hex_group_to_integer!(x)),
     _ => Instruction::InvalidInstruction,
   }
 }
@@ -133,6 +140,20 @@ pub fn decode(op_code: u16) -> Instruction {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn convert_to_nibble_array() {
+    let result = as_nibble_array(0xFA07);
+    assert_eq!(result, [0xF, 0xA, 0x0, 0x7]);
+  }
+
+  #[test]
+  fn group_macro_test() {
+    assert_eq!(0xA, hex_group_to_integer!(0xA));
+    assert_eq!(0xAB, hex_group_to_integer!(0xA, 0xB));
+    assert_eq!(0x17B, hex_group_to_integer!(0x1, 0x7, 0xB));
+    assert_eq!(0xF0DA, hex_group_to_integer!(0xF, 0x0, 0xD, 0xA))
+  }
 
   #[test]
   fn call_machine_code() {

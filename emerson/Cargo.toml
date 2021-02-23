@@ -10,5 +10,5 @@ version = "0.1.0"
 iced = {git = "https://github.com/hecrj/iced", branch = "master", features = ["glow", "glow_canvas", "async-std", "debug"]}
 iced_native = {git = "https://github.com/hecrj/iced", branch = "master"}
 palmer = {path = "../palmer"}
-native-dialog = {version = "0.4.3"}
+native-dialog = {version = "0.5.4"}
 rodio = {version = "0.12.0"}

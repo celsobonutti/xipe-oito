@@ -1,13 +1,11 @@
 mod application;
-use native_dialog::*;
+
+use native_dialog;
 
 pub fn main() -> iced::Result {
-  let dialog = native_dialog::OpenSingleFile {
-    dir: None,
-    filter: None
-  };
+  let dialog = native_dialog::FileDialog::new().show_open_single_file();
 
-  let path = dialog.show().unwrap().unwrap_or_default();
+  let path = dialog.unwrap().unwrap_or_default();
 
   application::run(path)
 }
