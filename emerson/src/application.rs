@@ -129,13 +129,7 @@ impl Application for Emerson {
               .update(grid::Message::Show(self.engine.display.pixels));
           }
         };
-        if cfg!(target_os = "windows") {
-          for _ in 0..5 {
-            closure();
-          }
-        } else {
-          closure();
-        }
+        closure();
       }
       Message::Display(_) => (),
       Message::Event(event) => match event {
@@ -166,11 +160,9 @@ impl Application for Emerson {
   }
 
   fn subscription(&self) -> Subscription<Self::Message> {
-    let time = if cfg!(target_os = "windows") { 10 } else { 2 };
-
     if self.cartridge_loaded {
       Subscription::batch(vec![
-        time::every(Duration::from_millis(time as u64)).map(Message::Tick),
+        time::every(Duration::from_millis(2)).map(Message::Tick),
         iced_native::subscription::events().map(Message::Event),
       ])
     } else {

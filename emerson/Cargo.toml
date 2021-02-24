@@ -7,8 +7,8 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-iced = {git = "https://github.com/hecrj/iced", branch = "master", features = ["glow", "glow_canvas", "async-std", "debug"]}
-iced_native = {git = "https://github.com/hecrj/iced", branch = "master"}
+iced = { version = "0.2.0", features = ["glow", "glow_canvas", "tokio", "debug"]}
+iced_native = "0.3.0"
 palmer = {path = "../palmer"}
 native-dialog = {version = "0.5.4"}
 rodio = {version = "0.12.0"}
